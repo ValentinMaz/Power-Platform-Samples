@@ -1,7 +1,7 @@
 # Power BI Templates
 This folder contains the Power BI templates that I share with the community. Follow the instructions for the set up. If you face some challenges during the set up please create an issue in github directly.
 
-## AI Builder Consumption Report
+## AI Builder Consumption Template.pbt
 ![ai-builder-consumption-report-screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/assets/39318272/d8c9b6a8-b27c-4a0a-8322-b93173e4fb1c)
 
 - Blog article with all details: https://powertricks.io/manage-ai-builder-consumption/
