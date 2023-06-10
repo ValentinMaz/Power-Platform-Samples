@@ -18,7 +18,7 @@ This folder contains the Power BI templates that I share with the community. Fol
    - CoEKitEnvironmentUrl: the org Url of the environment where the CoE Kit is installed
 - Other steps: once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
 
-## API Calls Report Template.pbt
+## API Calls Consumption Template.pbt
 ![power-platform-requests-consumption-report-screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e9704da4aae55308a94bdc31946c5ba961c7f468/PowerBI%20Templates/Screenshots/power-platform-requests-consumption-report-screenshot.png)
 
 - Blog article with all details: https://powertricks.io/monitor-power-platform-requests-consumption/
