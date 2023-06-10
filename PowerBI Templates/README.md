@@ -17,3 +17,18 @@ This folder contains the Power BI templates that I share with the community. Fol
    - DefaultEnvironmentUrl: the org Url of the default environment, or any environment without a security group assigned
    - CoEKitEnvironmentUrl: the org Url of the environment where the CoE Kit is installed
 - Other steps: once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
+
+## API Calls Report Template.pbt
+![power-platform-requests-consumption-report-screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e9704da4aae55308a94bdc31946c5ba961c7f468/PowerBI%20Templates/Screenshots/power-platform-requests-consumption-report-screenshot.png)
+
+- Blog article with all details: https://powertricks.io/monitor-power-platform-requests-consumption/
+- Prerequisites:
+   - Access to an Environment that has not been assigned a Security Group (such as the default environment if relevant)
+   - Access to some extracted Power Platform consumption csv reports (as explained in the blog article referenced above, they can be extracted from the Power Platform Admin Center by any one who is the System Admin of at least one environment - or tenant admin)
+   - Access to a SharePoint site
+   - Power BI Desktop installed
+- Parameters to configure:
+   - SharePointSite: the url of the site where the reports will be stored
+   - SharePointFolder: the name of the folder where the reports will be stored in the site
+   - DefaultEnvironmentUrl: the org Url of the default environment, or any environment without a security group assigned
+- Other steps: once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
