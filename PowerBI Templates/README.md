@@ -45,4 +45,6 @@ This folder contains the Power BI templates that I share with the community. Fol
 - Parameters to configure:
    - GuidelinesPage: the url of a page explaining the best practices to the users (SharePoint or other)
    - CoEKitEnvironmentUrl: the org Url of the environment where the CoE Kit is installed
-- Other steps: once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
+- Other steps:
+   - There is a Row Level Security Role configured called "User". Once published to Power BI Online, you can assign this role to Makers and they will only see their own data
+   - once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
