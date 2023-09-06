@@ -4,7 +4,7 @@ This folder contains the Power BI templates that I share with the community. Fol
 ## AI Builder Consumption Template.pbit
 ![ai-builder-consumption-report-screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/3b5bbe7fe7e6cfa057c6f6595ca1a66a1cde51a9/PowerBI%20Templates/Screenshots/ai-builder-consumption-report-screenshot.png)
 
-- Blog article with all details: https://powertricks.io/manage-ai-builder-consumption/
+- Blog article with all details: [https://powertricks.io/manage-ai-builder-consumption/](https://powertricks.io/better-manage-ai-builder-consumption/)
 - Prerequisites:
    - Access to an Environment where the CoE Kit is installed with permissions over the admin_environment table (https://aka.ms/CoEStarterKit)
    - Access to an Environment that has not been assigned a Security Group (can be the CoE Kit environmnet or the default environment)
@@ -21,7 +21,7 @@ This folder contains the Power BI templates that I share with the community. Fol
 ## API Calls Consumption Template.pbit
 ![power-platform-requests-consumption-report-screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e9704da4aae55308a94bdc31946c5ba961c7f468/PowerBI%20Templates/Screenshots/power-platform-requests-consumption-report-screenshot.png)
 
-- Blog article with all details: https://powertricks.io/monitor-power-platform-requests-consumption/
+- Blog article with all details: [https://powertricks.io/monitor-power-platform-requests-consumption/](https://powertricks.io/monitor-platform-requests-for-a-better-governance/)
 - Prerequisites:
    - Access to an Environment that has not been assigned a Security Group (such as the default environment if relevant)
    - Access to some extracted Power Platform consumption csv reports (as explained in the blog article referenced above, they can be extracted from the Power Platform Admin Center by any one who is the System Admin of at least one environment - or tenant admin)
@@ -38,7 +38,7 @@ This folder contains the Power BI templates that I share with the community. Fol
 ![my-flows-report](https://github.com/ValentinMaz/Power-Platform-Samples/blob/59173da489d2ba313e6b56f4ba599a3a0f8540e8/PowerBI%20Templates/Screenshots/my-flows-report.png)
 ![myapps-report](https://github.com/ValentinMaz/Power-Platform-Samples/blob/59173da489d2ba313e6b56f4ba599a3a0f8540e8/PowerBI%20Templates/Screenshots/myapps-report.png)
 
-- Blog article with all details: https://powertricks.io/enable-makers-to-follow-best-practices/
+- Blog article with all details: [https://powertricks.io/enable-makers-to-follow-best-practices/](https://powertricks.io/guide-and-empower-makers-to-follow-best-practices/)
 - Prerequisites:
    - Access to an Environment where the CoE Starter Kit is installed (https://aka.ms/CoEStarterKit)
    - Power BI Desktop installed
@@ -48,3 +48,8 @@ This folder contains the Power BI templates that I share with the community. Fol
 - Other steps:
    - There is a Row Level Security Role configured called "User". Once published to Power BI Online, you can assign this role to Makers and they will only see their own data
    - once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
+- Troubleshoot
+   - You might get the error message below after setting the parameters:
+     ![image](https://github.com/ValentinMaz/Power-Platform-Samples/assets/39318272/370e125f-86e1-402c-b941-724b6b97c2b4)
+     If you do, you can click "Close" and then "Apply Changes":
+     ![image](https://github.com/ValentinMaz/Power-Platform-Samples/assets/39318272/37f4b42e-9987-4767-898c-a3eba75e2a5d)
