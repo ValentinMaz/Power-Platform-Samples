@@ -50,6 +50,6 @@ This folder contains the Power BI templates that I share with the community. Fol
    - once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
 - Troubleshoot
    - You might get the error message below after setting the parameters:
-     ![image](https://github.com/ValentinMaz/Power-Platform-Samples/assets/39318272/370e125f-86e1-402c-b941-724b6b97c2b4)
-   - if you do, you can click "Close" and then "Apply Changes":
-     ![image](https://github.com/ValentinMaz/Power-Platform-Samples/assets/39318272/37f4b42e-9987-4767-898c-a3eba75e2a5d)
+      ![image](https://github.com/ValentinMaz/Power-Platform-Samples/blob/7413421027281e78f970b632ca7d6acb401b460f/PowerBI%20Templates/Screenshots/PowerTricks_ErrorPBT_References.png)
+      
+      if you do, you can click "Close" and then "Apply Changes"
