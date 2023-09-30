@@ -5,6 +5,8 @@ The **DLP Policy Toolbox** is a solution built to facilitate the management of D
 
 More information about this tool can be found on this blog post: https://powertricks.io/dlp-policy-toolbox
 
+[https://github.com/ValentinMaz/Power-Platform-Samples/blob/9294576d904ff814b3f185c6ab5fc2adad19218b/DLP%20Policy%20Toolbox/Screenshots/DLP%20Policy%20Toolbox%20Screenshot.png](https://github.com/ValentinMaz/Power-Platform-Samples/blob/9294576d904ff814b3f185c6ab5fc2adad19218b/DLP%20Policy%20Toolbox/Screenshots/DLP%20Policy%20Toolbox%20Screenshot.png)
+
 ## Pre-requisites
 - Access to an environment with Dataverse enabled (to be able to import the Solution)
 - Environment Maker Access (or more) on that environment
