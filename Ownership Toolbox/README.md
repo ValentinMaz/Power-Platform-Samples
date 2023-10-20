@@ -25,7 +25,7 @@ No data is stored by the solution, a premium license is required for the users t
 The installation is quick and easy.
 1. Download the solution package. Both Managed and Unmanaged solutions are added so that you can pick according to your preference.
 2. Import the solution in the target environment
-3. Configure the connection for the connectors when prompted
+3. Configure the connections for the connectors when prompted
 
 ## Customize the solution
 You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc... [More info here.](https://powertricks.io/ownership-toolbox#additional-comments)
