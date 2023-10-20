@@ -28,5 +28,8 @@ The installation is quick and easy.
 3. Configure the connection for the Power Platform for Admins connector when prompted
 4. Confirm that the 3 cloud flows are turned on
 
+## Customize the solution
+You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc...
+
 ## Use the solution
 The App should be intuitive, but feel free to refer to [the blog post](https://powertricks.io/dlp-policy-toolbox) for more information about how to use the App.
