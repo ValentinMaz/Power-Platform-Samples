@@ -7,6 +7,8 @@ The **Ownership Toolbox** is a free tool to help Power Platform admins to effici
 
 More information about this tool can be found on this blog post: https://powertricks.io/ownership-toolbox
 
+![https://github.com/ValentinMaz/Power-Platform-Samples/blob/ca14d14c03a17f23a8bf8c925ef1125ee8812403/Ownership%20Toolbox/Screenshots/ownership-toolbox.png](https://github.com/ValentinMaz/Power-Platform-Samples/blob/ca14d14c03a17f23a8bf8c925ef1125ee8812403/Ownership%20Toolbox/Screenshots/ownership-toolbox.png)
+
 ## Pre-requisites
 - Access to an environment where the [CoE Starter Kit](https://learn.microsoft.com/en-us/power-platform/guidance/coe/starter-kit) is installed
 - Environment Maker Access (or more) on that environment for the import of the solution
