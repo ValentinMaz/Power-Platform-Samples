@@ -32,3 +32,10 @@ You can customize the Look & Feel of the App by updating the App Formulas for th
 
 ## Use the solution
 The App should be intuitive, but feel free to refer to [the blog post](https://powertricks.io/ownership-toolbox) for more information about how to use the App.
+
+## Troubleshoot
+- If your Power Apps version does not have [the Host object](https://learn.microsoft.com/en-us/power-platform/power-fx/reference/object-hos) available, you might experience the errors below in the canvas app:
+
+  ![https://user-images.githubusercontent.com/70452834/277759211-3cdf78d9-afd6-4a40-ae55-4652878f34e5.png](https://user-images.githubusercontent.com/70452834/277759211-3cdf78d9-afd6-4a40-ae55-4652878f34e5.png)
+
+  You can fix this issue by updating the App.Formulas property and replace "Host.TenantID" by your actual tenantId
