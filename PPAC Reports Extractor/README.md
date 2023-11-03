@@ -53,4 +53,4 @@ In this case:
 ![Not Ready error screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Error%20NotReady.png)
 - If you get the error below when trying to download the report in the flow 'Data Load Executor', it is that the report is too big. If you were trying to download the report from the Canvas App, try a shorter period of time to decrease the size of the report.
 *'Http request failed as there is an error: 'Cannot write more bytes to the buffer than the configured maximum buffer size: 104857600.'*
-![Size error screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Error%20Size.png)
+![Size error screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/eab6a865ab8f02943fbd2b55596b9dfebf73c048/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Error%20Size.png)
