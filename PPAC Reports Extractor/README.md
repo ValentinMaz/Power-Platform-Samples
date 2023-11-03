@@ -21,13 +21,16 @@ More information about this solution can be found on this blog post: https://pow
 The Solution principally contains:
 - 1 Child Flow 'Data Load Executor' to generate the reports and store them on SharePoint when prompted
 - 1 Cloud Flow 'Daily Data Load Requestor' to request each report every day
-- 1 Power Apps Canvas App 'PpaReports - Manual Request' to request a report for specific start and end dates
+- 1 Power Apps Canvas App 'PpaReports - Manual Request' to request a report for specific start and end dates:  
+
+![PPAC Report Extractor App](https://github.com/ValentinMaz/Power-Platform-Samples/blob/b9981210dc43f19661737f318984371a9969eea6/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20App.png)
 - 1 Cloud Flow 'Manual Data Load Requestor', triggered from the App to request the report generation
 
 ## Install the solution
 1. Download the solution package. Both Managed and Unmanaged solutions are added so that you can pick according to your preference
 2. Import the solution in the target environment
-3. Configure the connection for the connectors when prompted. For the HTTP with Azure AD connector, you will need to create a connction to connect to https://licensing.powerplatform.microsoft.com/ for the first reference and to https://graph.microsoft.com/ for the second one
+3. Configure the connection for the connectors when prompted. For the HTTP with Azure AD connector, you will need to create a connction to connect to https://licensing.powerplatform.microsoft.com/ for the first reference and to https://graph.microsoft.com/ for the second one.  
+
 ![Connection image 1](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Connections%202.png)
 ![Connection image 2](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Connections%203.png)
 4. Configure the Environment Variables:
