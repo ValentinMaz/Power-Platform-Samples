@@ -28,8 +28,8 @@ The Solution principally contains:
 1. Download the solution package. Both Managed and Unmanaged solutions are added so that you can pick according to your preference
 2. Import the solution in the target environment
 3. Configure the connection for the connectors when prompted. For the HTTP with Azure AD connector, you will need to create a connction to connect to https://licensing.powerplatform.microsoft.com/ for the first reference and to https://graph.microsoft.com/ for the second one
-[image](image)
-[image](image)
+![Connection image 1](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Connections%202.png)
+![Connection image 2](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Connections%203.png)
 4. Configure the Environment Variables:
     - **PpacReportsEmailAdmins**: the email address receiving the failure alerts if a flow fails to extract a report
     - **PpacReportsSPSite**: the SharePoint site to upload the reports
@@ -41,13 +41,13 @@ You can customize the Look & Feel of the App by updating the App Formulas for th
 
 ## Troubleshoot
 - If you get a 'BadRequest' error when the flow "Data Load Executor" runs, it is likely that your connection references are not mapped properly.
-[image](image)
+![Bad request screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Bad%20Request.png)
 In this case:
     - If you are using the managed solution, go to the default solution and identify the 2 connection references called 'PpacReports - HTTP with Azure AD Graph API' and 'PpacReports - HTTP with Azure AD Licensing API'.
     - If you are using the unmanaged solution, directly identify these connection references in the solution
     - Make sure that each reference is mapped to the connection connecting to the right url (see 1. of the installation instructions above). Unfortunatley there is not an easy way to map the right connection to the right connection reference. The easiest is to use an environment with only the 2 connections for this connector that are needed by these flows and to swap them if it is not working
 - If you get an error 'Not ready' when trying to download the report in the flow 'Data Load Executor', it is probably that the waiting delay is too low for the size of the report. Try to increase the amount of minutes in the variable **PpacReportsNumberDelay** (10, 30, 45, 120, ...)
-[image](image)
+![Not Ready error screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Error%20NotReady.png)
 - If you get the error below when trying to download the report in the flow 'Data Load Executor', it is that the report is too big. If you were trying to download the report from the Canvas App, try a shorter period of time to decrease the size of the report.
 *'Http request failed as there is an error: 'Cannot write more bytes to the buffer than the configured maximum buffer size: 104857600.'*
-[image](image)
+![Size error screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Error%20Size.png)
