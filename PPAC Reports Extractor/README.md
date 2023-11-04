@@ -33,6 +33,7 @@ The Solution principally contains:
 
 ![Connection image 1](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Connections%202.png)
 ![Connection image 2](https://github.com/ValentinMaz/Power-Platform-Samples/blob/e60325a5d5918918f2960d131973d9d1fad12bc8/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Connections%203.png)
+
 4. Configure the Environment Variables:
     - **PpacReportsEmailAdmins**: the email address receiving the failure alerts if a flow fails to extract a report
     - **PpacReportsSPSite**: the SharePoint site to upload the reports
