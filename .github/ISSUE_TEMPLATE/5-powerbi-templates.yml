@@ -1,0 +1,21 @@
+name: 📊 [Power BI Templates] Bug, question or feature ask report
+description: File a Bug, question or feature ask report for a Power BI Template
+title: "[Power BI Template] TOPIC TITLE"
+labels: ["pbi template"]
+body:
+- type: textarea
+  attributes:
+    label: Describe your bug, question or feature ask.
+    description: A concise description of what issue you are experiencing, what question you have or what feature you would like to see.
+  validations:
+    required: true
+- type: dropdown
+  id: component
+  attributes:
+    label: What template is related to this Bug, question, or feature ask? (if relevant)
+    options:
+      - AI Builder Consumption Template
+      - API Calls Consumption Template
+      - My Flows & Apps Template
+  validations:
+    required: false
