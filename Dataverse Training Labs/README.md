@@ -2,7 +2,7 @@
 These **Dataverse Training Labs** contain step-by-step instructions to learn about and practice with Dataverse. More information about Dataverse and the reasons why I created these labs can be found on this blog post: https://powertricks.io/dataverse-labs
 
 ## What you will find in this repo
-- [**A Note for Admins**](https://github.com/ValentinMaz/Power-Platform-Samples/blob/main/Dataverse%20Training%20Labs/Note%20For%20Admins.pdf?raw=1): This document is intended for Power Platform CoEs and Admins. I provide information about the technical requirement to follow the Labs there. The main question will be to define the Environment which will be used to complete the labs, for which I share some ideas.
+- [**A Note for Admins**](https://github.com/ValentinMaz/Power-Platform-Samples/blob/main/Dataverse%20Training%20Labs/Note%20For%20Admins.pdf?raw=1?dl=0): This document is intended for Power Platform CoEs and Admins. I provide information about the technical requirement to follow the Labs there. The main question will be to define the Environment which will be used to complete the labs, for which I share some ideas.
 - [**The PowerTricks Dataverse Labs**](https://github.com/ValentinMaz/Power-Platform-Samples/raw/main/Dataverse%20Training%20Labs/PowerTricks%20Dataverse%20Labs.pdf): The actual step-by-step instructions to follow to complete the Labs. This has been as detailed as possible with screenshots and annotation.
 - [**Lab Materials**](Labs%20Materials/): this contains a solution package and some import csv files which are required to follow the first chapter of the labs.
 - [**Editable Files**](Editable%20Files/): the Note for Admins and Labs in the .docx format if you wish to adjust and re-brand them. 
