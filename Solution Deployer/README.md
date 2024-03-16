@@ -58,4 +58,4 @@ This Solution is only composed of one Dataflow. Its purpose it to pull the envir
 6. Once replaced, open the the "admin_enviornment" query and set up the connection by clicking "Configure connection"
 7. Feel free to adjust the Query steps (optional), for instance you might want to add some filters to not import all environments as target environments
 8. Click Next and then Publish. The Dataflow will run once and should already be configured to run every day which you can adjust as needed
-9. Once the first refresh is completed, go back to the Model Driven App of the Solution Designer and confirm that the Target Environments have been imported. You can then configure them appropriately
+9. Once the first refresh is completed, go back to the Model Driven App of the Solution Deployer and confirm that the Target Environments have been imported. You can then configure them appropriately
