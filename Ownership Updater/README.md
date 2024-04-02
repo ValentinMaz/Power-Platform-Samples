@@ -3,7 +3,7 @@ The **Ownership Updater** is a simple solution containing a Child Flow which can
 - Change the main owner of the App or Flow by inputting the email address of the user who should be the new Owner
 - Define whether the current Owner should be a co-owner or not have any edit rights over the App or Flow
 
-More information about this solution and what it can do are available on this blog post: https://powertricks.io/change-app-and-flow-owners
+More information about this solution and what it can do are available on this blog post: https://powertricks.io/ownership-updater
 
 ![My Image](/Ownership%20Updater/Screenshots/OwnershipUpdaterMainFlowScreenshot.png)
 
@@ -18,7 +18,7 @@ The Solution contains 3 child flows:
 - 1 Main Child flow to request the ownership change
 - 1 Child Flow called by the Main one if it is a request to change an App Owner
 - 1 Child Flow called by the Main one if it is a request to change a Flow Owner
-More information about how the flow were design can be found in [the related blog post](https://powertricks.io/change-app-and-flow-owners)
+More information about how the flow were design can be found in [the related blog post](https://powertricks.io/ownership-updater)
 
 ## Install the solution
 Proceed to the steps below to set up the solution:
