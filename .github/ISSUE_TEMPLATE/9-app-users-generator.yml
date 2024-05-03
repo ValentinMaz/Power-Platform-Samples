@@ -1,7 +1,7 @@
-name: 🔒 [Environment Settings Enforcer] Bug, question or feature ask report
+name: 🥷 [App Users Generator] Bug, question or feature ask report
 description: File a Bug, question or feature ask report for the Environment Settings Enforcer
-title: "[Environment Settings Enforcer] TOPIC TITLE"
-labels: ["Environment Settings Enforcer"]
+title: "[App Users Generator] TOPIC TITLE"
+labels: ["App Users Generator"]
 body:
 - type: textarea
   attributes:
@@ -13,4 +13,4 @@ body:
   id: version
   attributes:
     label: What solution version are you using? (if relevant)
-    placeholder: "2024.04.26.2"
+    placeholder: "2024.05.02.0"
