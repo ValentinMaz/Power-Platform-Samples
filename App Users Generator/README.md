@@ -3,7 +3,7 @@ The **App Users Generator** solution allows to generate or activate an Applicati
 
 I share more information about this solution and what it can do on this blog post: https://powertricks.io/app-users-generator
 
-![App Generator Screenshot](/App%20Users%20Generator/Screenshots/AppUsersGeneratorChildFlow1.png)
+![App Generator Screenshot](/App%20Users%20Generator/Screenshots/AppUsersGeneratorChildFlow1-1.png)
 
 ## Pre-requisites
 - Access to an environment with Dataverse enabled
