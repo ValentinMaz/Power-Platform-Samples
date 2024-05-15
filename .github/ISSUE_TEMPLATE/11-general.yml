@@ -1,0 +1,11 @@
+name: 🎈 [General] Question or feature ask report
+description: General question or feature ask report about this repo or https://powertricks.io
+title: "[General] TOPIC TITLE"
+labels: ["general"]
+body:
+- type: textarea
+  attributes:
+    label: Describe your Question or feature ask.
+    description: A concise description of what question you have or what feature you would like to see.
+  validations:
+    required: true

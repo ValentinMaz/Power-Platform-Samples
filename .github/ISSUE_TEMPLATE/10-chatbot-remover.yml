@@ -1,0 +1,16 @@
+name: 💭 [Chatbot Remover] Bug, question or feature ask report
+description: File a Bug, question or feature ask report for the Chatbot Remover
+title: "[Chatbot Remover] TOPIC TITLE"
+labels: ["Chatbot Remover"]
+body:
+- type: textarea
+  attributes:
+    label: Describe your bug, question or feature ask.
+    description: A concise description of what issue you are experiencing, what question you have or what feature you would like to see.
+  validations:
+    required: true
+- type: input
+  id: version
+  attributes:
+    label: What solution version are you using? (if relevant)
+    placeholder: "2024.05.13.1"
