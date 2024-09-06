@@ -13,7 +13,7 @@ More information about this solution and what it can do are available on this bl
 ## Pre-requisites
 - Access to an environment with Dataverse enabled
 - The following connectors need to be enabled on the enviornment: Dataverse, Office 365 for Outlook, Power Apps for Admins, Power Automate for Admins, Power Platform for Admins. 
-- The Power Platform Tenant Administrator role is needed for the account owning the solution flows and using the Model Driven App
+- The Power Platform Tenant Administrator role is needed for the account owning the solution flows and using the Model Driven App. Or at least, the account should be System Administrator of the Environments used for Source and Target
 - A premium license is required for the Admins using the App
 
 ## The Solution 
