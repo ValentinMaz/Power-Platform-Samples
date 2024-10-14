@@ -7,6 +7,7 @@ The **PPAC Reports Extractor** is a free Solution to automatically download Powe
 - **ApiByFlow**: Power Platform Requests consumption for licensed flows
 - **PowerPagesAnonymous**: Power Pages consumption reports for Anonymous users
 - **PowerPagesAuthenticated**: Power Pages consumption reports for Authenticated users
+- **CopilotStudioDetailedUsage**: Copilot Studio consumption reports for message consumption
 
 More information about this solution can be found on this blog post: https://powertricks.io/automatically-download-tenant-reports 
 
@@ -21,6 +22,7 @@ More information about this solution can be found on this blog post: https://pow
 The Solution principally contains:
 - 1 Child Flow 'Data Load Executor' to generate the reports and store them on SharePoint when prompted
 - 1 Cloud Flow 'Daily Data Load Requestor' to request each report every day
+- 1 Cloud Flow 'One-Off - Request Last Days' to request the last X days worth of data for a specific report. This can be helpful as a one-off after the first installation
 - 1 Power Apps Canvas App 'PpaReports - Manual Request' to request a report for specific start and end dates:  
 
 ![PPAC Report Extractor App](https://github.com/ValentinMaz/Power-Platform-Samples/blob/b9981210dc43f19661737f318984371a9969eea6/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20App.png)
@@ -55,3 +57,17 @@ In this case:
 - If you get the error below when trying to download the report in the flow 'Data Load Executor', it is that the report is too big. If you were trying to download the report from the Canvas App, try a shorter period of time to decrease the size of the report.
 *'Http request failed as there is an error: 'Cannot write more bytes to the buffer than the configured maximum buffer size: 104857600.'*
 ![Size error screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/eab6a865ab8f02943fbd2b55596b9dfebf73c048/PPAC%20Reports%20Extractor/Screenshots/PPAC%20Reports%20Extractor%20-%20Error%20Size.png)
+
+## The Power BI Template to analyze the data
+A template 'Daily Consumption Report.pbit' is provided to faciliate reporting. It contains 3 pages to report on the consumption of AI Builder, Copilot Studio, and API Calls (only for licensed users).
+When opening it for the first time, you will be prompted to configure the below parameters:
+- **SPOSite**: the SharePoint site Url where the reports are saved
+- **SPOFolderAIBuilder** / **SPOFolderRequestsLicensedUsers** / **SPOFolderCopilotStudio**: the names of the SharePoint folders containing the daily reports
+- **DefaultEnvironmentUrl**: the Url of the default environment
+- **CoEKitEnvironmentUrl**: the Url of the environment where the CoE Kit is installed
+
+![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-AIBuilder.png)
+
+![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-CopilotStudio.png)
+
+![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICalls.png)
