@@ -14,6 +14,7 @@ body:
   attributes:
     label: What template is related to this Bug, question, or feature ask? (if relevant)
     options:
+      - Daily Consumption Report
       - AI Builder Consumption Template
       - API Calls Consumption Template
       - My Flows & Apps Template

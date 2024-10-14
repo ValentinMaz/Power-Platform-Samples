@@ -1,6 +1,17 @@
 # Power BI Templates
 This folder contains the Power BI templates that I share with the community. Follow the instructions for the set up. If you face some challenges during the set up please create an issue in github directly.
 
+## Daily Consumption Report.pbit
+![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-CopilotStudio.png)
+
+- Blog article with all details: [https://powertricks.io/automatically-download-tenant-reports/](https://powertricks.io/automatically-download-tenant-reports/)
+- Prerequisites:
+   - [PPAC Reports Extractor Installed](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/PPAC%20Reports%20Extractor)
+   - Power BI Desktop installed
+- Parameters to configure:
+   - [See PPAC Reports Extractor Repo](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/PPAC%20Reports%20Extractor)
+- Other steps: once the parameters are configured, the report will be refreshed pulling all the required data. The visuals are pretty self-explanatory, feel free to adjust as needed!
+
 ## AI Builder Consumption Template.pbit
 ![ai-builder-consumption-report-screenshot](https://github.com/ValentinMaz/Power-Platform-Samples/blob/3b5bbe7fe7e6cfa057c6f6595ca1a66a1cde51a9/PowerBI%20Templates/Screenshots/ai-builder-consumption-report-screenshot.png)
 
