@@ -41,6 +41,7 @@ The Solution principally contains:
     - **PpacReportsSPSite**: the SharePoint site to upload the reports
     - **PpacReportsSPFolderPath<reportType>**: these variables correspond to the relative folder path where each report will be uploaded. If the folders are not already created when the flow runs, they will be automatically generated
     - **PpacReportsNumberDelay**: this variable corresponds to the delay in minutes that the flow will wait after requesting the report and prior to trying to download it. Based on the size of the tenant this delay might need to be anything from 1 minute to a lot more. For the daily extractions, between 1 and 45 minutes should be enough, according to the size of the tenant.
+    - **PpacReportsNumberSoonestReport**: this variable correspond to the latest day that a report can be extracted for. The default is set to 3, meaning that every day the consumption reports related to 3 days ago will be extracted. This variable is created because in the past the reports used to be available the next day, then it changed to 2 days, then 3. If the solution starts to extract empty reports, try incrementing this variable by one.
 
 ## Customize the solution
 You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc...
