@@ -6,7 +6,7 @@ More information about this solution can be found on this blog post: https://pow
 ![Endpoint Manager Bulk Rule Creation](/Endpoint%20Manager/Screenshots/epm-bulk-create-rules2.png)
   
 ## Pre-requisites
-- Access to an environment with the HTTP connector (endpoints "https://api.bap.microsoft.com/providers/PowerPlatform.Governance/*"), Office 365 Outlook, and the Dataverse connectors enabled
+- Access to an environment with the HTTP connector (endpoints `https://api.bap.microsoft.com/providers/PowerPlatform.Governance/*`), Office 365 Outlook, and the Dataverse connectors enabled
 - A Power Automate Premium license for the account which will import the solution
 - An App Registered in Azure to use the Business Application Platform API (api.bap.microsoft.com) (more information in a dedicated section below)
 - An Azure Key Vault instance set up to store the secrets of the Azure App (more information in a dedicated section below)
