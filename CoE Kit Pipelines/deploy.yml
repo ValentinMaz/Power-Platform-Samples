@@ -1,0 +1,173 @@
+# ============================================================================
+# Title: Pack & Deploy solution (auto-generate settings; omit empties; publish settings)
+# Author: Valentin Mazhar  |  More at: https://powertricks.io/coe-kit-pipelines
+# What this pipeline does
+#   - Packs the managed solution from the repo
+#   - Auto-generates deployment settings via PAC
+#   - Merges runtime values for the chosen target (dev/prod/source), omitting empties
+#   - Imports the solution using the merged settings
+#   - Publishes both the packed ZIP and the deployment settings as pipeline artifacts
+#
+# Reusability — change the parameters below for another tenant/repo line 34 - 61
+#   - serviceConnection mapping per target (dev/prod/source) 
+#   - valuesFile paths per environment
+#   - solutionSourceFolder / outputDir / managedZip as per repo layout
+#
+# ============================================================================
+
+trigger: none
+pr: none
+
+parameters:
+- name: target
+  displayName: Target environment
+  type: string
+  default: dev
+  values:
+    - source
+    - dev
+    - prod
+
+pool:
+  vmImage: windows-latest
+
+variables:
+- name: solutionSourceFolder
+  value: '$(Build.SourcesDirectory)/core/src'
+- name: outputDir
+  value: '$(Build.ArtifactStagingDirectory)'
+- name: managedZip
+  value: 'coe-core_managed.zip'
+- name: settingsTempFile
+  value: '$(Build.ArtifactStagingDirectory)/deploymentSettings.json'
+- name: target
+  value: ${{ parameters.target }}
+
+# Parameter → service connection & valuesFile mapping (reusable pattern)
+- ${{ if eq(parameters.target, 'dev') }}:
+  - name: serviceConnection
+    value: 'CoE_DEV'
+  - name: valuesFile
+    value: 'core/settings/coe-core.dev.json'
+- ${{ if eq(parameters.target, 'prod') }}:
+  - name: serviceConnection
+    value: 'CoE_PROD'
+  - name: valuesFile
+    value: 'core/settings/coe-core.prod.json'
+- ${{ if eq(parameters.target, 'source') }}:
+  - name: serviceConnection
+    value: 'CoE_SOURCE'
+  - name: valuesFile
+    value: 'core/settings/coe-core.source.json'
+
+steps:
+# Step 0 — Checkout
+- checkout: self
+  persistCredentials: true
+  clean: true
+  fetchDepth: 0
+
+# Step 1 — Install Power Platform CLI (adds pac to PATH)
+- task: PowerPlatformToolInstaller@2
+  displayName: 'Step 1 — Install Power Platform CLI'
+  inputs:
+    AddToolsToPath: true
+
+# Step 2 — Pack the solution from repo as Managed
+- task: PowerPlatformPackSolution@2
+  displayName: 'Step 2 — Pack solution (Managed)'
+  inputs:
+    SolutionSourceFolder: '$(solutionSourceFolder)'
+    SolutionOutputFile: '$(outputDir)/$(managedZip)'
+    SolutionType: 'Managed'
+
+# Step 3 — Generate the deployment settings template with PAC
+- task: PowerShell@2
+  displayName: 'Step 3 — Generate deployment settings template'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = 'Stop'
+      Write-Host "Generating deployment settings for solution at $(solutionSourceFolder)"
+      pac solution create-settings --solution-folder "$(solutionSourceFolder)" --settings-file "$(settingsTempFile)"
+      if (-not (Test-Path "$(settingsTempFile)")) {
+        throw "Failed to generate deployment settings file."
+      }
+      Write-Host "Template generated: $(settingsTempFile)"
+
+# Step 4 — Merge runtime values from $(valuesFile) and OMIT empties (no blank values/ids)
+- task: PowerShell@2
+  displayName: 'Step 4 — Merge values for $(target) and prune empties'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = 'Stop'
+
+      function IsNullOrWhiteSpace([string]$s) { return [string]::IsNullOrWhiteSpace($s) }
+
+      $generated = Get-Content -Raw -Path "$(settingsTempFile)" | ConvertFrom-Json
+      $values    = Get-Content -Raw -Path "$(valuesFile)"        | ConvertFrom-Json
+
+      if (-not $generated.EnvironmentVariables) { $generated | Add-Member -NotePropertyName EnvironmentVariables -NotePropertyValue @() }
+      if (-not $generated.ConnectionReferences) { $generated | Add-Member -NotePropertyName ConnectionReferences -NotePropertyValue @() }
+
+      # Environment Variables — set only if non-empty input, else keep generated/defaults
+      foreach ($v in ($values.EnvironmentVariables | Where-Object { $_ })) {
+        $match = $generated.EnvironmentVariables | Where-Object { $_.SchemaName -eq $v.SchemaName }
+        if ($match) {
+          if (-not (IsNullOrWhiteSpace ([string]$v.Value))) { $match.Value = [string]$v.Value }
+        }
+      }
+
+      # Connection References — set only when ConnectionId present; keep ConnectorId if provided
+      foreach ($cr in ($values.ConnectionReferences | Where-Object { $_ })) {
+        $match = $generated.ConnectionReferences | Where-Object { $_.LogicalName -eq $cr.LogicalName }
+        if ($match) {
+          $hasConnId = -not (IsNullOrWhiteSpace ([string]$cr.ConnectionId))
+          $hasConnectorId = -not (IsNullOrWhiteSpace ([string]$cr.ConnectorId))
+          if ($hasConnId) {
+            $match.ConnectionId = [string]$cr.ConnectionId
+            if ($hasConnectorId) { $match.ConnectorId = [string]$cr.ConnectorId }
+          }
+        }
+      }
+
+      # Prune empties so import never sees ""
+      if ($generated.EnvironmentVariables) {
+        $generated.EnvironmentVariables = @($generated.EnvironmentVariables | Where-Object { -not (IsNullOrWhiteSpace ([string]$_.Value)) })
+      }
+      if ($generated.ConnectionReferences) {
+        $generated.ConnectionReferences = @($generated.ConnectionReferences | Where-Object { -not (IsNullOrWhiteSpace ([string]$_.ConnectionId)) })
+      }
+
+      $generated | ConvertTo-Json -Depth 10 | Out-File -Encoding UTF8 "$(settingsTempFile)"
+      Write-Host "Merged settings written: $(settingsTempFile)"
+
+# Step 5 — Import the solution using the merged deployment settings
+- task: PowerPlatformImportSolution@2
+  displayName: 'Step 5 — Import solution to $(target)'
+  inputs:
+    authenticationType: PowerPlatformSPN
+    PowerPlatformSPN: '$(serviceConnection)'
+    SolutionInputFile: '$(outputDir)/$(managedZip)'
+    UseDeploymentSettingsFile: true
+    DeploymentSettingsFile: '$(settingsTempFile)'
+    PublishCustomizations: true
+    OverwriteUnmanagedCustomizations: false
+    UseAsyncMode: true
+    MaxAsyncWaitTime: 60
+
+# Step 6 — Publish artifacts (packed solution + deployment settings)
+- task: PublishPipelineArtifact@1
+  displayName: 'Step 6a — Publish artifact: packed solution'
+  inputs:
+    targetPath: '$(outputDir)/$(managedZip)'
+    artifact: 'packed-solution'
+    publishLocation: 'pipeline'
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Step 6b — Publish artifact: deployment settings (for troubleshooting)'
+  inputs:
+    targetPath: '$(settingsTempFile)'
+    artifact: 'deployment-settings'
+    publishLocation: 'pipeline'

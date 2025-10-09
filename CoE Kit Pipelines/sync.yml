@@ -1,0 +1,293 @@
+# ============================================================================
+# Title: Sync latest CoE Core + normalize settings (non-destructive)
+# Author: Valentin Mazhar |  More info at: https://powertricks.io/coe-kit-pipelines
+# What this pipeline does
+#   - Downloads the latest CoE Core managed solution from GitHub Releases
+#   - Unpacks it into the repo
+#   - Creates fresh settings for source/dev/prod with PAC, then merges with repo copies
+#   - Normalizes JSON with jq (stable ordering + pretty print, no BOM)
+#   - Commits changes and opens a PR only if there are diffs (REST-based, no extensions)
+#
+# Reusability — change these variables in the variables block (line 24-28) for another tenant/repo
+#   - variables.solutionName      → GitHub asset name prefix to get from the CoE Kit Github Repo
+#   - variables.outputFolder      → where to unpack the solution in your repo
+#   - variables.settingsFolder    → where the three env settings files live
+#   - variables.targetBranch      → default branch name (e.g., main)
+#
+# ============================================================================
+
+trigger: none
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  solutionName: 'CenterofExcellenceCoreComponents'
+  outputFolder: 'core/src'          # unpacked solution path in repo
+  settingsFolder: 'core/settings'   # settings files path in repo
+  targetBranch: 'main'              # default branch to PR into
+
+steps:
+# Step 0 — Checkout (allow pushing a branch for the PR)
+- checkout: self
+  persistCredentials: true
+  clean: true
+  fetchDepth: 0
+
+# Step 1 — Download latest CoE Core managed solution from GitHub Releases
+- task: PowerShell@2
+  name: DownloadSolution
+  displayName: 'Step 1 — Download managed solution from GitHub'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+      $solutionName = "$(solutionName)"
+      $headers = @{ 'User-Agent' = 'azdo-pipeline' }
+      $release = Invoke-RestMethod -Uri "https://api.github.com/repos/microsoft/coe-starter-kit/releases/latest" -Headers $headers
+
+      $asset = $release.assets | Where-Object { $_.name -like "*$solutionName*managed.zip" }
+      if (-not $asset) { throw "Managed solution not found in latest release." }
+
+      $downloadUrl = $asset.browser_download_url
+      $outputPath  = "$(Build.ArtifactStagingDirectory)\$($asset.name)"
+
+      Write-Host "Downloading $($asset.name) from $downloadUrl"
+      Invoke-WebRequest -Uri $downloadUrl -OutFile $outputPath
+
+      Write-Host "##vso[task.setvariable variable=solutionZipPath]$outputPath"
+
+# Step 2 — Publish the managed ZIP as a pipeline artifact (optional)
+- task: PublishPipelineArtifact@1
+  displayName: 'Step 2 — Publish artifact: ManagedSolution ZIP'
+  inputs:
+    targetPath: '$(solutionZipPath)'
+    artifact: 'ManagedSolution'
+    publishLocation: 'pipeline'
+
+# Step 3 — Install Power Platform CLI (adds `pac` to PATH)
+- task: PowerPlatformToolInstaller@2
+  displayName: 'Step 3 — Install Power Platform CLI'
+  inputs:
+    AddToolsToPath: true
+
+# Step 4 — Clean unpack folder (avoid stale diffs)
+- task: PowerShell@2
+  displayName: 'Step 4 — Clean unpack folder'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+      $target = Join-Path "$(Build.SourcesDirectory)" "$(outputFolder)".Replace('/','\')
+      if (Test-Path $target) { Remove-Item $target -Recurse -Force }
+      New-Item -ItemType Directory -Path $target | Out-Null
+
+# Step 5 — Unpack solution (Managed)
+- task: PowerPlatformUnpackSolution@2
+  displayName: 'Step 5 — Unpack solution (Managed)'
+  inputs:
+    SolutionInputFile: '$(solutionZipPath)'
+    SolutionTargetFolder: '$(Build.SourcesDirectory)\$(outputFolder)'
+    SolutionType: 'Managed'
+
+# Step 6 — Generate fresh deployment settings (source/dev/prod) to a temp folder
+- task: PowerShell@2
+  displayName: 'Step 6 — Create fresh settings with PAC'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+      $zip          = "$(solutionZipPath)"
+      $tempSettings = Join-Path "$(Build.ArtifactStagingDirectory)" "generated-settings"
+      New-Item -ItemType Directory -Force -Path $tempSettings | Out-Null
+
+      $files = @('coe-core.source.json','coe-core.dev.json','coe-core.prod.json')
+      foreach ($f in $files) {
+        pac solution create-settings --solution-zip "$zip" --settings-file (Join-Path $tempSettings $f)
+        if ($LASTEXITCODE -ne 0) { throw "pac create-settings failed for $f" }
+      }
+
+      Write-Host "##vso[task.setvariable variable=tempSettingsDir]$tempSettings"
+
+# Step 7 — Install jq (for formatting + deterministic ordering)
+- task: PowerShell@2
+  displayName: 'Step 7 — Install jq'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+      choco install jq -y --no-progress
+      jq --version
+
+# Step 8 — Merge (non-destructive) + normalize JSON (ordered + pretty)
+- task: PowerShell@2
+  displayName: 'Step 8 — Merge & normalize settings with jq'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+
+      $tempSettings = "$(tempSettingsDir)"
+      $repoSettings = Join-Path "$(Build.SourcesDirectory)" "$(settingsFolder)".Replace('/','\')
+      New-Item -ItemType Directory -Force -Path $repoSettings | Out-Null
+
+      $jqScriptPath = "$(Build.ArtifactStagingDirectory)\merge.jq"
+      @'
+      # Flatten PAC's {Default, ByLcid} objects to a plain string
+      def plain:
+        if type=="object" then
+          (.Default // ( .ByLcid | to_entries | .[0].value ) // null)
+        else
+          .
+        end;
+
+      # Find first match in an array by key/value
+      def firstMatch($arr; $key; $val):
+        ($arr // []) | map(select(.[$key] == $val)) | (.[0] // null);
+
+      # Compute TypeName from TypeId (fallback to provided TypeName or "Unknown")
+      def typeName:
+        ( { "100000000":"String", "100000001":"Number", "100000002":"Boolean",
+            "100000003":"JSON",  "100000004":"DataSource", "100000005":"Secret" }[(.TypeId|tostring)]
+          // (.TypeName // "Unknown") );
+
+      # Inputs: $s = fresh snapshot (from PAC), $e = existing repo file (or empty stub)
+      ($s[0] // {}) as $s
+      | ($e[0] // {}) as $e
+      | {
+          EnvironmentVariables:
+            [ ($s.EnvironmentVariables // [])[] as $sv
+              | ( firstMatch($e.EnvironmentVariables; "SchemaName"; $sv.SchemaName) ) as $ev_old
+              | {
+                  SchemaName:   $sv.SchemaName,
+                  Name:         ( $sv.Name | plain ),
+                  Description:  ( $sv.Description | plain ),
+                  TypeId:       $sv.TypeId,
+                  TypeName:     ($sv | typeName),
+                  DefaultValue: ( if $ev_old != null and ($ev_old.DefaultValue // "") != "" then $ev_old.DefaultValue else ($sv.DefaultValue // "") end ),
+                  Value:        ( if $ev_old != null and ($ev_old.Value        // "") != "" then $ev_old.Value        else ($sv.Value        // "") end )
+                }
+            ],
+          ConnectionReferences:
+            [ ($s.ConnectionReferences // [])[] as $sc
+              | ( firstMatch($e.ConnectionReferences; "LogicalName"; $sc.LogicalName) ) as $cr_old
+              | {
+                  LogicalName:  $sc.LogicalName,
+                  ConnectorId:  $sc.ConnectorId,
+                  ConnectionId: ( if $cr_old != null and ($cr_old.ConnectionId // "") != "" then $cr_old.ConnectionId else "" end )
+                }
+            ]
+        }
+      '@ | Set-Content -Path $jqScriptPath -Encoding ASCII
+
+      $files = @('coe-core.source.json','coe-core.dev.json','coe-core.prod.json')
+
+      foreach ($name in $files) {
+        $snapshotPath = Join-Path $tempSettings $name
+        $envPath      = Join-Path $repoSettings $name
+        $tmpOld       = "$(Build.ArtifactStagingDirectory)\old.json"
+
+        if (Test-Path $envPath) {
+          Copy-Item $envPath $tmpOld -Force
+        } else {
+          Set-Content -Path $tmpOld -Value '{"EnvironmentVariables":[],"ConnectionReferences":[]}' -Encoding UTF8
+        }
+
+        cmd /c "jq -n --indent 2 --slurpfile s `"$snapshotPath`" --slurpfile e `"$tmpOld`" --from-file `"$jqScriptPath`" > `"$envPath.tmp`""
+        if ($LASTEXITCODE -ne 0) { throw "jq merge failed for $name" }
+
+        Move-Item "$envPath.tmp" $envPath -Force
+        Write-Host "Merged & formatted: $envPath"
+      }
+
+# Step 9 — Commit & push
+- task: PowerShell@2
+  name: CommitAndPush
+  displayName: 'Step 9 — Commit & push updated solution + settings'
+  env:
+    SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = 'Stop'
+
+      $repoRoot     = "$(Build.SourcesDirectory)"
+      $solutionPath = Join-Path $repoRoot "$(outputFolder)".Replace('/','\')
+      $settingsPath = Join-Path $repoRoot "$(settingsFolder)".Replace('/','\')
+      $targetBranch = "$(targetBranch)"
+
+      git config user.email "buildagent@dev.azure.com"
+      git config user.name  "Azure DevOps Pipeline"
+      git config core.longpaths true
+
+      git checkout $targetBranch
+      git pull origin $targetBranch
+
+      git add -A -- "$solutionPath" "$settingsPath"
+
+      git diff --cached --quiet -- "$solutionPath" "$settingsPath"
+      $hasStaged = ($LASTEXITCODE -ne 0)
+
+      if (-not $hasStaged) {
+        Write-Host "No changes to commit (solution/settings unchanged)."
+        Write-Host "##vso[task.setvariable variable=changesPresent;isOutput=true]false"
+        exit 0
+      }
+
+      $branchName = "update-coe-corecomponents-$(Build.BuildId)"
+
+      if (-not (git rev-parse --verify --quiet "refs/heads/$branchName")) {
+        git checkout -b $branchName
+      } else {
+        git checkout $branchName
+      }
+
+      git commit -m "chore: update CoE Core + jq-merged settings (ordered & pretty) [skip ci]"
+
+      try {
+        git push -u origin $branchName
+      } catch {
+        Write-Warning "Plain push failed; retrying with auth header."
+        git -c http.extraheader="AUTHORIZATION: bearer $env:SYSTEM_ACCESSTOKEN" push -u origin $branchName
+      }
+
+      Write-Host "##vso[task.setvariable variable=branchName;isOutput=true]$branchName"
+      Write-Host "##vso[task.setvariable variable=changesPresent;isOutput=true]true"
+
+# Step 10 — Create PR
+- task: PowerShell@2
+  displayName: 'Step 10 — Create PR (REST, no extensions)'
+  condition: and(succeeded(), eq(variables['CommitAndPush.changesPresent'], 'true'))
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = 'Stop'
+
+      $orgUrl   = "$(System.CollectionUri)".TrimEnd('/')
+      $project  = "$(System.TeamProject)"
+      $repoId   = "$(Build.Repository.ID)"
+      $source   = "$(CommitAndPush.branchName)"
+      $target   = "$(targetBranch)"
+      $token    = "$(System.AccessToken)"
+      if ([string]::IsNullOrWhiteSpace($token)) { throw "Enable 'Allow scripts to access the OAuth token' on the job." }
+
+      # 1) Idempotency: check for existing active PR
+      $listUri = "$orgUrl/$project/_apis/git/repositories/$repoId/pullrequests?searchCriteria.sourceRefName=refs/heads/$source&searchCriteria.targetRefName=refs/heads/$target&searchCriteria.status=active&api-version=7.1-preview.1"
+      $existing = Invoke-RestMethod -Method Get -Uri $listUri -Headers @{ Authorization = "Bearer $token" }
+      if ($existing.count -gt 0) {
+        Write-Host "Active PR already exists (ID: $($existing.value[0].pullRequestId)). Skipping."
+        exit 0
+      }
+
+      # 2) Create PR
+      $createUri = "$orgUrl/$project/_apis/git/repositories/$repoId/pullrequests?api-version=7.1-preview.1"
+      $body = @{
+        sourceRefName = "refs/heads/$source"
+        targetRefName = "refs/heads/$target"
+        title         = "Update CoE Core + merged settings"
+        description   = "Automated PR with unpacked CoE Core and jq-merged, ordered, pretty-printed settings."
+        isDraft       = $false
+      } | ConvertTo-Json -Depth 5
+
+      Invoke-RestMethod -Method Post -Uri $createUri -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body | Out-Null
+      Write-Host "PR created."

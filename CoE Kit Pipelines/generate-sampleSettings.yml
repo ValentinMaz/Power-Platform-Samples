@@ -1,0 +1,336 @@
+# ============================================================================
+# Title: Generate settings.sample.json from Dataverse Web API + PR
+# Author: Valentin Mazhar  |  More info at: https://powertricks.io/coe-kit-pipelines
+# What this pipeline does
+#   - Reads Dataverse via Web API using a Power Platform (SPN) service connection
+#   - Builds a raw settings.sample.json honoring the repo template schema
+#   - Normalizes JSON with jq (ordering + pretty print)
+#   - Commits and raises a PR via REST (no extensions)
+#
+# Reusability — change these variables in the parameters block (line 23-35) for another tenant/repo
+#   - parameters.serviceConnection   → PP (SPN) service connection to query
+#   - parameters.settingsFile        → template used to shape/seed output fields
+#   - parameters.outputFile          → path for generated sample file in repo
+#   - parameters.targetBranch        → default branch name (e.g., main)
+#
+# ============================================================================
+
+trigger: none
+
+pool:
+  vmImage: windows-latest
+
+parameters:
+- name: serviceConnection
+  type: string
+  default: 'CoE_DEV'
+- name: settingsFile
+  type: string
+  default: 'core/settings/coe-core.dev.json'
+- name: outputFile
+  type: string
+  default: 'core/settings/settings.sample.json'
+- name: targetBranch
+  type: string
+  default: 'main'
+
+steps:
+# Step 0 — Checkout with credentials for git push
+- checkout: self
+  persistCredentials: true
+  clean: true
+  fetchDepth: 0
+
+# Step 1 — Populate connection variables from service connection (no secrets echoed)
+- task: PowerPlatformSetConnectionVariables@2
+  displayName: 'Step 1 — Read credentials from service connection'
+  inputs:
+    authenticationType: PowerPlatformSPN
+    PowerPlatformSPN: ${{ parameters.serviceConnection }}
+
+# Step 2 — Build raw settings.sample.json from Web API
+- task: PowerShell@2
+  displayName: 'Step 2 — Generate settings.sample.json (raw)'
+  inputs:
+    targetType: inline
+    script: |
+      #region Strict / helpers
+      $ErrorActionPreference = 'Stop'
+      function Test-HasProp($obj,[string]$name){ ($null -ne $obj) -and ($obj.PSObject.Properties.Name -contains $name) }
+      function Flatten-Text([object]$v){
+        if ($null -eq $v) { return $null }
+        if (Test-HasProp $v 'Default' -and $v.Default) { return [string]$v.Default }
+        if (Test-HasProp $v 'ByLcid'  -and $v.ByLcid)  {
+          $first = $v.ByLcid.PSObject.Properties | Select-Object -First 1
+          if ($first) { return [string]$first.Value }
+        }
+        return [string]$v
+      }
+      function Invoke-DvGetAll([string]$initialUrl,[hashtable]$headers){
+        $all=@(); $url=$initialUrl
+        while($true){
+          $resp = Invoke-RestMethod -Method Get -Uri $url -Headers $headers
+          if (Test-HasProp $resp 'value'){ $all += @($resp.value) }
+          $next = $resp.'@odata.nextLink'
+          if ([string]::IsNullOrWhiteSpace($next)) { break }
+          $url = $next
+        }
+        ,$all
+      }
+      #endregion
+
+      #region Paths / inputs
+      $settingsPathInRepo = Join-Path "$(Build.SourcesDirectory)" "${{ parameters.settingsFile }}".Replace('/','\')
+      if (-not (Test-Path $settingsPathInRepo)) { throw "Settings file not found: $settingsPathInRepo" }
+      $outputPathInRepo   = Join-Path "$(Build.SourcesDirectory)" "${{ parameters.outputFile }}".Replace('/','\')
+      New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($outputPathInRepo)) | Out-Null
+      #endregion
+
+      #region Credentials from Set Connection Variables
+      $tenantId = "$(PowerPlatformSetConnectionVariables.BuildTools.TenantId)"
+      $appId    = "$(PowerPlatformSetConnectionVariables.BuildTools.ApplicationId)"
+      $secret   = "$(PowerPlatformSetConnectionVariables.BuildTools.ClientSecret)"
+      $dvConn   = "$(PowerPlatformSetConnectionVariables.BuildTools.DataverseConnectionString)"
+
+      $envUrl = ($dvConn -split ';' | Where-Object { $_ -match '^\s*Url\s*=' } | ForEach-Object { ($_ -split '=',2)[1] }).Trim()
+      if ([string]::IsNullOrWhiteSpace($envUrl)) { throw "Could not parse Environment Url from DataverseConnectionString." }
+      $envUrl = $envUrl.TrimEnd('/')
+      #endregion
+
+      #region AAD token for Dataverse Web API (client credentials)
+      $tokenUri = "https://login.microsoftonline.com/$tenantId/oauth2/v2.0/token"
+      $scope    = "$envUrl/.default"
+      $tok = Invoke-RestMethod -Method Post -Uri $tokenUri -ContentType 'application/x-www-form-urlencoded' -Body @{
+        client_id     = $appId
+        client_secret = $secret
+        grant_type    = 'client_credentials'
+        scope         = $scope
+      }
+      $accessToken = $tok.access_token
+      if ([string]::IsNullOrWhiteSpace($accessToken)) { throw "Failed to acquire AAD token for Dataverse." }
+      $base = "$envUrl/api/data/v9.2"
+      $hdrs = @{
+        Authorization      = "Bearer $accessToken"
+        Accept             = "application/json"
+        'Content-Type'     = "application/json; charset=utf-8"
+        'OData-MaxVersion' = "4.0"
+        'OData-Version'    = "4.0"
+      }
+      #endregion
+
+      #region Environment Variable Definitions
+      $defsUrl = $base + "/environmentvariabledefinitions?`$select=environmentvariabledefinitionid,schemaname,type"
+      $defRows = Invoke-DvGetAll -initialUrl $defsUrl -headers $hdrs
+      $defById = @{}
+      foreach($d in @($defRows)){
+        if (-not $d) { continue }
+        $id = [string]$d.environmentvariabledefinitionid
+        $schema = [string]$d.schemaname
+        if ([string]::IsNullOrWhiteSpace($id) -or [string]::IsNullOrWhiteSpace($schema)) { continue }
+        $defById[$id] = [pscustomobject]@{ SchemaName=$schema; TypeId=$d.type }
+      }
+      #endregion
+
+      #region Environment Variable Values (skip writing secrets)
+      $valsUrl = $base + "/environmentvariablevalues?`$select=_environmentvariabledefinitionid_value,value"
+      $valRows = Invoke-DvGetAll -initialUrl $valsUrl -headers $hdrs
+      $evBySchema = @{}
+      foreach($v in @($valRows)){
+        if (-not $v) { continue }
+        $defIdRaw = $v.PSObject.Properties['_environmentvariabledefinitionid_value'].Value
+        $val = $v.value
+        if ([string]::IsNullOrWhiteSpace($defIdRaw)) { continue }
+        if (-not $defById.ContainsKey($defIdRaw))    { continue }
+        $schema = $defById[$defIdRaw].SchemaName
+        $typeId = $defById[$defIdRaw].TypeId
+        if (-not $evBySchema.ContainsKey($schema)) {
+          $valToKeep = $null
+          if ($typeId -ne 100000005) { # not Secret
+            if ($null -ne $val -and ($val -isnot [string] -or -not [string]::IsNullOrWhiteSpace($val))) { $valToKeep = $val }
+          }
+          $evBySchema[$schema] = [pscustomobject]@{ TypeId=$typeId; Value=$valToKeep }
+        }
+      }
+      #endregion
+
+      #region Connection References (logical -> connector/connection ids)
+      $crUrl  = $base + "/connectionreferences?`$select=connectionreferencelogicalname,connectorid,connectionid"
+      $crRows = Invoke-DvGetAll -initialUrl $crUrl -headers $hdrs
+      $crByLogical = @{}
+      foreach ($row in @($crRows)) {
+        if (-not $row) { continue }
+        $logical = $row.connectionreferencelogicalname
+        if ([string]::IsNullOrWhiteSpace($logical)) { continue }
+        $crByLogical[$logical] = [pscustomobject]@{
+          ConnectorId  = if ($row.connectorid)  { [string]$row.connectorid }  else { '' }
+          ConnectionId = if ($row.connectionid) { [string]$row.connectionid } else { '' }
+        }
+      }
+      #endregion
+
+      #region Build output honoring template schema
+      $typeMap = @{
+        100000000='String'; 100000001='Number'; 100000002='Boolean'
+        100000003='JSON';   100000004='DataSource'; 100000005='Secret'
+      }
+
+      $template = Get-Content $settingsPathInRepo -Raw | ConvertFrom-Json
+      $out = [pscustomobject]@{ EnvironmentVariables = @(); ConnectionReferences = @() }
+
+      $evs = @()
+      if ($template -and (Test-HasProp $template 'EnvironmentVariables')) { $evs = $template.EnvironmentVariables }
+      foreach ($ev in @($evs)) {
+        if ($null -eq $ev) { continue }
+        $schema  = $ev.SchemaName
+        $current = if ($evBySchema.ContainsKey($schema)) { $evBySchema[$schema] } else { $null }
+
+        $typeId = if ($ev.TypeId -ne $null) { $ev.TypeId } elseif ($current) { $current.TypeId } else { $null }
+        $typeName = $ev.TypeName
+        if (-not $typeName -and $typeId -ne $null -and $typeMap.ContainsKey($typeId)) { $typeName = $typeMap[$typeId] }
+
+        $valueToWrite = $null
+        if ($current -and $current.Value) { $valueToWrite = $current.Value }
+
+        $out.EnvironmentVariables += [pscustomobject]@{
+          SchemaName   = $schema
+          Name         = (Flatten-Text $ev.Name)
+          Description  = (Flatten-Text $ev.Description)
+          TypeId       = $typeId
+          TypeName     = $typeName
+          DefaultValue = $ev.DefaultValue
+          Value        = $valueToWrite
+        }
+      }
+
+      $crs = @()
+      if ($template -and (Test-HasProp $template 'ConnectionReferences')) { $crs = $template.ConnectionReferences }
+      foreach ($cr in @($crs)) {
+        if ($null -eq $cr) { continue }
+        $logical = $cr.LogicalName
+        $current = if ($crByLogical.ContainsKey($logical)) { $crByLogical[$logical] } else { $null }
+
+        $out.ConnectionReferences += [pscustomobject]@{
+          LogicalName  = $logical
+          ConnectorId  = if ($cr.ConnectorId) { [string]$cr.ConnectorId } elseif ($current) { [string]$current.ConnectorId } else { '' }
+          ConnectionId = if ($current) { [string]$current.ConnectionId } else { '' }
+        }
+      }
+
+      $out | ConvertTo-Json -Depth 100 | Out-File $outputPathInRepo -Encoding utf8
+      Write-Host "Generated (raw): $outputPathInRepo"
+
+      # Prepare branch for commit after formatting step
+      Set-Location "$(Build.SourcesDirectory)"
+      git config user.email "pipeline@dev.azure.com"
+      git config user.name  "ADO Pipeline"
+      $branchName = "update-sample-settings-$(Build.BuildId)"
+      Write-Host "##vso[task.setvariable variable=sourceBranch]$branchName"
+      git checkout -b $branchName
+      git add -- "${{ parameters.outputFile }}".Replace('/','\')
+      # Commit happens after jq normalization
+      #endregion
+
+# Step 3 — Install jq (ensures formatting works on all agents)
+- task: PowerShell@2
+  displayName: 'Step 3 — Install jq'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+      choco install jq -y --no-progress
+      jq --version
+
+# Step 4 — Normalize settings.sample.json with jq (ordered + pretty) and push
+- task: PowerShell@2
+  displayName: 'Step 4 — Normalize with jq and push'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = "Stop"
+      $outPath = Join-Path "$(Build.SourcesDirectory)" "${{ parameters.outputFile }}".Replace('/','\')
+      if (-not (Test-Path $outPath)) { throw "Output file not found: $outPath" }
+
+      $jqScriptPath = "$(Build.ArtifactStagingDirectory)\normalize.jq"
+      @'
+      def orderEV: {
+        SchemaName:   .SchemaName,
+        Name:         .Name,
+        Description:  .Description,
+        TypeId:       .TypeId,
+        TypeName:     .TypeName,
+        DefaultValue: (.DefaultValue // ""),
+        Value:        (.Value // null)
+      };
+      def orderCR: {
+        LogicalName:  .LogicalName,
+        ConnectorId:  (.ConnectorId // ""),
+        ConnectionId: (.ConnectionId // "")
+      };
+      {
+        EnvironmentVariables: ( (.EnvironmentVariables // []) | map(orderEV) | sort_by(.SchemaName) ),
+        ConnectionReferences: ( (.ConnectionReferences // []) | map(orderCR) | sort_by(.LogicalName) )
+      }
+      '@ | Set-Content -Path $jqScriptPath -Encoding ASCII
+
+      $tmp = "$outPath.tmp"
+      cmd /c "jq --indent 2 --from-file `"$jqScriptPath`" `"$outPath`" > `"$tmp`""
+      if ($LASTEXITCODE -ne 0) { throw "jq formatting failed." }
+
+      Move-Item $tmp $outPath -Force
+      Write-Host "Normalized & formatted: $outPath"
+
+      # Commit and push
+      Set-Location "$(Build.SourcesDirectory)"
+      git add -- "${{ parameters.outputFile }}".Replace('/','\')
+      git diff --cached --quiet
+      if ($LASTEXITCODE -ne 0) {
+        git commit -m "chore: update settings.sample.json (normalized) [skip ci]"
+        git push -u origin "$(sourceBranch)"
+      } else {
+        Write-Host "No changes to commit after formatting."
+      }
+
+# Step 5 — Create PR via REST (no extensions); idempotent
+- task: PowerShell@2
+  displayName: 'Step 5 — Create PR (REST, no extensions)'
+  inputs:
+    targetType: inline
+    script: |
+      $ErrorActionPreference = 'Stop'
+
+      $orgUrl   = "$(System.CollectionUri)".TrimEnd('/')
+      $project  = "$(System.TeamProject)"
+      $repoId   = "$(Build.Repository.ID)"
+      $source   = "$(sourceBranch)"                     # set earlier
+      $target   = "${{ parameters.targetBranch }}"
+      $token    = "$(System.AccessToken)"
+      if ([string]::IsNullOrWhiteSpace($token)) { throw "Enable 'Allow scripts to access the OAuth token' on the job." }
+
+      # 1) Idempotency check
+      $listUri = "$orgUrl/$project/_apis/git/repositories/$repoId/pullrequests?searchCriteria.sourceRefName=refs/heads/$source&searchCriteria.targetRefName=refs/heads/$target&searchCriteria.status=active&api-version=7.1-preview.1"
+      $existing = Invoke-RestMethod -Method Get -Uri $listUri -Headers @{ Authorization = "Bearer $token" }
+      if ($existing.count -gt 0) {
+        Write-Host "Active PR already exists (ID: $($existing.value[0].pullRequestId)). Skipping."
+        exit 0
+      }
+
+      # 2) Create PR
+      $createUri = "$orgUrl/$project/_apis/git/repositories/$repoId/pullrequests?api-version=7.1-preview.1"
+      $body = @{
+        sourceRefName = "refs/heads/$source"
+        targetRefName = "refs/heads/$target"
+        title         = "chore: update settings.sample.json"
+        description   = "Automated update from $(Build.Repository.Name)"
+        isDraft       = $false
+      } | ConvertTo-Json -Depth 5
+
+      Invoke-RestMethod -Method Post -Uri $createUri -Headers @{ Authorization = "Bearer $token" } -ContentType "application/json" -Body $body | Out-Null
+      Write-Host "PR created."
+
+# Step 6 — Publish pipeline artifact with generated sample (optional visibility)
+- task: PublishPipelineArtifact@1
+  displayName: 'Step 6 — Publish artifact: settings.sample.json'
+  inputs:
+    targetPath: '$(Build.SourcesDirectory)/${{ parameters.outputFile }}'
+    artifact: 'settings-sample'
+    publishLocation: 'pipeline'
