@@ -1,5 +1,5 @@
 # Endpoint Collector
-The **Endpoint Collector** is a free Solution to extend the CoE Starter Kit automatically store the endpoints that the cloud flows from the tenant send HTTP requests to with the HTTP and HTTP With Entra Id connectors. The main features of the solution include:
+The **Endpoint Collector** is a free Solution to extend the CoE Starter Kit and automatically store the endpoints that the cloud flows from the tenant send HTTP requests to with the HTTP, HTTP Webhook, and and HTTP With Entra Id connectors. The main features of the solution include:
 - Automatically identify the flows using these connectors and store the related endpoints configured in the flow
 - Automatically detect whether hard-coded secrets and passwords are used to define these HTTP actions in each Flow
 - Automatically detect whether the HTTP protocol is used as opposed to HTTPS 
