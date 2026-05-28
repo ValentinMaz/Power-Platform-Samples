@@ -7,8 +7,7 @@ The **PPAC Reports Extractor** is a free Solution to automatically download Powe
 - **ApiByFlow**: Power Platform Requests consumption for licensed flows
 - **PowerPagesAnonymous**: Power Pages consumption reports for Anonymous users
 - **PowerPagesAuthenticated**: Power Pages consumption reports for Authenticated users
-- **CopilotStudioDetailedUsage**: Copilot Studio legacy chat session consumption
-- **MCSMessages**: Copilot Studio message consumption reports, both tenant summary and detailed environment reports
+- **MCSMessages**: Copilot Studio message consumption reports
 
 More information about this solution can be found on this blog post: https://powertricks.io/automatically-download-tenant-reports 
 
@@ -22,7 +21,6 @@ More information about this solution can be found on this blog post: https://pow
 ## The solution
 The Solution principally contains:
 - 1 Child Flow 'Data Load Executor' to generate the reports and store them on SharePoint when prompted
-- 1 Child Flow 'Data Load Executor - CHILD - get Detailed Env Message Report' to generate the Copilot Studio environment reports and store them on SharePoint when prompted
 - 1 Cloud Flow 'Daily Data Load Requestor' to request each report every day
 - 1 Cloud Flow 'One-Off - Request Last Days' to request the last X days worth of data for a specific report. This can be helpful as a one-off after the first installation
 - 1 Power Apps Canvas App 'PpaReports - Manual Request' to request a report for specific start and end dates:  
@@ -43,9 +41,7 @@ The Solution principally contains:
     - **PpacReportsSPFolderPath**: this variable corresponds to the relative path of the folder where each report will be uploaded. If the folder is not already created when the flow runs, it will be automatically generated. Sub-folders are then automatically created inside.
     - **PpacReportsNumberDelay**: this variable corresponds to the delay in minutes that the flow will wait after requesting the report and prior to trying to download it. I suggest to start at 1 and only increment if necessary due to throttling.
     - **PpacReportsNumberSoonestReport**: this variable corresponds to the latest day that a report can be extracted for. The default is set to 3, meaning that every day the consumption reports related to 3 days ago will be extracted. This variable is created because in the past the reports used to be available the next day, then it changed to 2 days, then 3. If the solution starts to extract empty reports, try incrementing this variable by one.
-    - **PpacReportsNumberCopsLookbackDays**: extracting the Copilot Studio message reports is done via a different endpoint. This endpoint does not accept a start and end date in the request body. Instead, it takes a number of days to look back. This variable can be used to set this parameter. For example if set to 3, it will look at the last 3 days, but since the data is not available straight away, this will only extract the data of 2 days ago. The default is set to 3, and as for the 'PpacReportsNumberSoonestReport' variable, it might need to be adjusted.
-    - **PpacReportsBoolCopsAllEnv**: boolean variable defining whether or not the Copilot Studio Detailed reports are extracted for all active environments in the tenant. For large tenant, this could have an impact on the API calls consumption of the account running the flows. If the value if set to TRUE, the variable 'PpacReportsListCopsEnvironments' is not considered.
-    - **PpacReportsListCopsEnvironments**: when 'PpacReportsBoolCopsAllEnv' is set to FALSE, this variable is used to define the environments to get the Copilot Studio detailed reports for. The format is `{"envInScope": [{"environmentId": "Id1"},{"environmentId": "Id2"},{"environmentId": "Id3"}]}`. If you would like not to have any detailed report downloaded, this variable can be set to `{"envInScope":[]}`.
+    - **PpacReportsTenantId**: the tenant id
 
 ## Customize the solution
 You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc...
@@ -69,7 +65,7 @@ When opening it for the first time, you will be prompted to configure the below 
 - **SPOSite**: the SharePoint site Url where the reports are saved
 - **DefaultEnvironmentUrl**: the Url of the default environment
 - **CoEKitEnvironmentUrl**: the Url of the environment where the CoE Kit is installed
-**Please Note**: the API endpoint to get the Copilot Studio consumption reports is slightly different from the endpoint used for the other reports. For the other reports, it is possible to indicate a start and end date when requesting a report, which allows us to ensure that each report downloaded only contains one day worth of data. For Copilot Studio, only one parameter can be used to define how many days to look back for. Since the data is not available straight away, this can lead to some days being duplicated across the downloaded reports. If you build your own reporting from the downloaded reports, make sure to add some query steps to remove duplicates after combining all the files. This is already done for each query in the PBI template.
+**Please Note**: for Copilot Studio, each extract automatically downloaded contains 6 months worth of data.
 
 ![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-AIBuilder.png)
 
@@ -79,6 +75,4 @@ When opening it for the first time, you will be prompted to configure the below 
 
 ![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICallsNonLicensed.png)
 
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-CopsTenant.png)
-
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-CopsEnvironment.png)
+![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-Messages.png)
