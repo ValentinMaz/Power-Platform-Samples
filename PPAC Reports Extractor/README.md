@@ -9,6 +9,8 @@ The **PPAC Reports Extractor** is a free Solution to automatically download Powe
 - **PowerPagesAuthenticated**: Power Pages consumption reports for Authenticated users
 - **MCSMessages**: Copilot Studio message consumption reports
 
+> **Note:** Copilot Studio (MCSMessages) reports were unavailable earlier in 2026 due to an API endpoint change. This was fixed in release `2026_05_27`. As a result of the new endpoint, each daily extract covers 6 months of rolling data instead of a single day. See the Solution section below for more details.
+
 More information about this solution can be found on this blog post: https://powertricks.io/automatically-download-tenant-reports 
 
 ## Pre-requisites
