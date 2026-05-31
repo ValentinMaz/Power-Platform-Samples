@@ -21,7 +21,7 @@ More information about this solution can be found on this blog post: https://pow
 ## The solution
 The Solution principally contains:
 - 1 Child Flow 'Data Load Executor' to generate the reports and store them on SharePoint when prompted
-- 1 Cloud Flow 'Daily Data Load Requestor' to request each report every day
+- 1 Cloud Flow 'Daily Data Load Requestor' to request each report every day. **Please Note**: for Copilot Studio, each extract automatically downloaded contains 6 months worth of data. Other reports only contain one day worth each.
 - 1 Cloud Flow 'One-Off - Request Last Days' to request the last X days worth of data for a specific report. This can be helpful as a one-off after the first installation
 - 1 Power Apps Canvas App 'PpaReports - Manual Request' to request a report for specific start and end dates:  
 
@@ -64,7 +64,8 @@ A template 'Daily Consumption Report v2.pbit' is provided to faciliate reporting
 When opening it for the first time, you will be prompted to configure the below parameters:
 - **SPOSite**: the SharePoint site Url where the reports are saved
 - **DefaultEnvironmentUrl**: the Url of the default environment
-- **CoEKitEnvironmentUrl**: the Url of the environment where the CoE Kit is installed
+- **CoEKitEnvironmentUrl**: the Url of the environment where the CoE Kit is installed   
+
 **Please Note**: for Copilot Studio, each extract automatically downloaded contains 6 months worth of data.
 
 ![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-AIBuilder.png)
