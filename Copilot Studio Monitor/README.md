@@ -4,7 +4,7 @@ The **Copilot Studio Monitor** solution extends the CoE Starter Kit data model t
 
 Two Power BI template variants are available: a **core template** reporting on agent configuration, and a **"with Usage" template** that adds Copilot Credits consumption reporting (requires the PPAC Reports Extractor solution).
 
-More background, rationale and screenshots are in the related blog post: https://powertricks.io/copilot-studio-monitor
+More background, rationale and screenshots are in the related blog post: https://www.powertricks.io/copilot-studio-monitor
 
 ![Copilot Studio Monitor Screenshot](Screenshots/CSM_PBI_OView.png)
 
@@ -43,4 +43,4 @@ More background, rationale and screenshots are in the related blog post: https:/
 - Copilot Credits consumption pages are available in the "with Usage" template only.
 
 ## Learn More
-Full context, screenshots, and reasoning are in the blog article: https://powertricks.io/copilot-studio-monitor
+Full context, screenshots, and reasoning are in the blog article: https://www.powertricks.io/copilot-studio-monitor

@@ -9,7 +9,7 @@ The **Solution Deployer** is a solution built to allow Power Platform CoEs to ce
 - Handle the case when Environment Variable Definitions need to be mapped with a value, or Connection References with a connection
 - Track every deployment end to end, with the exporter and importer flow run URLs recorded on each Deployment so you can inspect any run — whether it succeeded or failed — directly from the record
 
-More information about this solution and what it can do is available on this blog post: https://powertricks.io/solution-deployer
+More information about this solution and what it can do is available on this blog post: https://www.powertricks.io/solution-deployer
 
 ![Solution Deployer](/Solution%20Deployer/Screenshots/NavigationSolutionSubscription.png)
 
@@ -48,7 +48,7 @@ Proceed to the steps below to set up the solution:
     - Please note that both the Target Owner and the Target Account Sign In users will need to be added as actual users of the Target Environment
 
 ## Use the solution
-Please refer to [the related blog post](https://powertricks.io/solution-deployer) for more information about how to use the App.
+Please refer to [the related blog post](https://www.powertricks.io/solution-deployer) for more information about how to use the App.
 
 ## Traceability of the deployments
 Each deployment is fully traceable from its Dataverse record. The Deployment table carries an **Exporter Run Url** and an **Importer Run Url**, and the Subscription Deployment table carries a **Flow Run Url**. These are stamped at the very start of each flow run, so you always have a direct link to the run that processed a given record — whether it completed successfully or failed at any stage. The `statuscode` (Status Reason) of the Deployment record also acts as a state machine, moving through the deployment stages (Queued, Exporting, Exported, Importing, Updating Ownership, Checking Connections, Checking Env Variables, Notifying, Completed) and surfacing the specific failure state if something goes wrong.

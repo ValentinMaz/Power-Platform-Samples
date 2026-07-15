@@ -3,6 +3,16 @@ description: File a Bug, question or feature ask report for the DLP Policy Toolb
 title: "[DLP Policy Toolbox] TOPIC TITLE"
 labels: ["dlp policy toolbox"]
 body:
+- type: dropdown
+  id: issue-type
+  attributes:
+    label: What kind of issue is this?
+    options:
+      - Bug
+      - Question
+      - Feature request
+  validations:
+    required: true
 - type: textarea
   attributes:
     label: Describe your bug, question or feature ask.

@@ -1,6 +1,6 @@
 # ============================================================================
 # Title: Pack & Deploy solution (auto-generate settings; omit empties; publish settings)
-# Author: Valentin Mazhar  |  More at: https://powertricks.io/coe-kit-pipelines
+# Author: Valentin Mazhar  |  More at: https://www.powertricks.io/coe-kit-pipelines
 # What this pipeline does
 #   - Packs the managed solution from the repo
 #   - Auto-generates deployment settings via PAC

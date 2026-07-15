@@ -11,7 +11,7 @@ The **PPAC Reports Extractor** is a free Solution to automatically download Powe
 
 > **Note:** Copilot Studio (MCSMessages) reports were unavailable earlier in 2026 due to an API endpoint change. This was fixed in release `2026_05_27`. As a result of the new endpoint, each daily extract covers 6 months of rolling data instead of a single day. See the Solution section below for more details.
 
-More information about this solution can be found on this blog post: https://powertricks.io/automatically-download-tenant-reports 
+More information about this solution can be found on this blog post: https://www.powertricks.io/automatically-download-tenant-reports 
 
 ## Pre-requisites
 - Access to an environment with these connectors enabled: **HTTP with Azure AD**, **Office 365 Outlook** and **SharePoint**

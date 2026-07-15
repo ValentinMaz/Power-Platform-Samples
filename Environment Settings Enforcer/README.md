@@ -5,7 +5,7 @@ The **Environment Settings Enforcer** is a solution built to allow Power Platfor
 - Manually deploy policies
 - Define the policies which should be automatically deployed every day to ensure the Environment Admins are not reverting back to other configurations
 
-More information about this solution and what it can do are available on this blog post: https://powertricks.io/settings-enforcer
+More information about this solution and what it can do are available on this blog post: https://www.powertricks.io/settings-enforcer
 
 ![Setting Enforcer Screenshot](/Environment%20Settings%20Enforcer/Screenshots/SettingsEnforcerApp.png)
 
@@ -35,4 +35,4 @@ Proceed to the steps below to set up the solution:
 5. Turn on all the Cloud Flows
 
 ## Use the solution
-Please refer to [the related blog post](https://powertricks.io/settings-enforcer) for more information about how to use the App.
+Please refer to [the related blog post](https://www.powertricks.io/settings-enforcer) for more information about how to use the App.

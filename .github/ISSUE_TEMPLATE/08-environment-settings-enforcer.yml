@@ -3,6 +3,16 @@ description: File a Bug, question or feature ask report for the Environment Sett
 title: "[Environment Settings Enforcer] TOPIC TITLE"
 labels: ["Environment Settings Enforcer"]
 body:
+- type: dropdown
+  id: issue-type
+  attributes:
+    label: What kind of issue is this?
+    options:
+      - Bug
+      - Question
+      - Feature request
+  validations:
+    required: true
 - type: textarea
   attributes:
     label: Describe your bug, question or feature ask.

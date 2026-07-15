@@ -1,0 +1,21 @@
+name: 🏗️ [CoE Kit Pipelines] Bug, question or feature ask report
+description: File a Bug, question or feature ask report for the CoE Kit Pipelines
+title: "[CoE Kit Pipelines] TOPIC TITLE"
+labels: ["CoE Kit Pipelines"]
+body:
+- type: dropdown
+  id: issue-type
+  attributes:
+    label: What kind of issue is this?
+    options:
+      - Bug
+      - Question
+      - Feature request
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Describe your bug, question or feature ask.
+    description: A concise description of what issue you are experiencing, what question you have or what feature you would like to see.
+  validations:
+    required: true

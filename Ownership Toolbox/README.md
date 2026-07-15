@@ -5,7 +5,7 @@ The **Ownership Toolbox** is a free tool to help Power Platform admins to effici
 - Change the main Owner of selected Apps or Flows, individually or in bulk
 - Remove the users with access to an App or Flow
 
-More information about this tool can be found on this blog post: https://powertricks.io/ownership-toolbox
+More information about this tool can be found on this blog post: https://www.powertricks.io/ownership-toolbox
 
 ![My Image](/Ownership%20Toolbox/Screenshots/ownership-toolbox-2.png)
 
@@ -31,10 +31,10 @@ The installation is quick and easy.
 4. Configure the connections for the connectors when prompted
 
 ## Customize the solution
-You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc... [More info here.](https://powertricks.io/ownership-toolbox#additional-comments)
+You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc... [More info here.](https://www.powertricks.io/ownership-toolbox#additional-comments)
 
 ## Use the solution
-The App should be intuitive, but feel free to refer to [the blog post](https://powertricks.io/ownership-toolbox) for more information about how to use the App.
+The App should be intuitive, but feel free to refer to [the blog post](https://www.powertricks.io/ownership-toolbox) for more information about how to use the App.
 
 ## Troubleshoot
 - If your Power Apps version does not have [the Host object](https://learn.microsoft.com/en-us/power-platform/power-fx/reference/object-hos) available, you might experience the errors below in the canvas app:

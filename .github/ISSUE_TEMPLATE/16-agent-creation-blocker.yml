@@ -1,0 +1,36 @@
+name: 🚧 [Agent Creation Blocker] Bug, question or feature ask report
+description: File a Bug, question or feature ask report for the Agent Creation Blocker solution
+title: "[Agent Creation Blocker] TOPIC TITLE"
+labels: ["Agent Creation Blocker"]
+body:
+- type: dropdown
+  id: issue-type
+  attributes:
+    label: What kind of issue is this?
+    options:
+      - Bug
+      - Question
+      - Feature request
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Describe your bug, question or feature ask.
+    description: A concise description of what issue you are experiencing, what question you have or what feature you would like to see.
+  validations:
+    required: true
+- type: dropdown
+  id: component
+  attributes:
+    label: Which solution is related to this Bug, question, or feature ask? (if relevant)
+    options:
+      - Core (BlockAgentCreationCore)
+      - Satellite (BlockAgentCreationSat)
+      - Both / Not sure
+  validations:
+    required: false
+- type: input
+  id: version
+  attributes:
+    label: What solution version are you using? (if relevant)
+    placeholder: "2026.07.15.1"

@@ -1,5 +1,5 @@
 # Dataverse Training Labs
-These **Dataverse Training Labs** contain step-by-step instructions to learn about and practice with Dataverse. More information about Dataverse and the reasons why I created these labs can be found on this blog post: https://powertricks.io/dataverse-labs
+These **Dataverse Training Labs** contain step-by-step instructions to learn about and practice with Dataverse. More information about Dataverse and the reasons why I created these labs can be found on this blog post: https://www.powertricks.io/dataverse-labs
 
 ## What you will find in this repo
 - **A Note for Admins**: This document is intended for Power Platform CoEs and Admins. I provide information about the technical requirement to follow the Labs there. The main question will be to define the Environment which will be used to complete the labs, for which I share some ideas.

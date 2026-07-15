@@ -1,6 +1,6 @@
 # ============================================================================
 # Title: Sync latest CoE Core + normalize settings (non-destructive)
-# Author: Valentin Mazhar |  More info at: https://powertricks.io/coe-kit-pipelines
+# Author: Valentin Mazhar |  More info at: https://www.powertricks.io/coe-kit-pipelines
 # What this pipeline does
 #   - Downloads the latest CoE Core managed solution from GitHub Releases
 #   - Unpacks it into the repo

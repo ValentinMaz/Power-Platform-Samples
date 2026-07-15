@@ -1,7 +1,7 @@
 # Endpoint Manager
 The **Endpoint Manager** is a free Solution to allow Power Platform CoEs and Admins to manage Endpoint Rule Filtering and Custom Connector Pattern Rules more efficiently. With this solution, Admins can define global whitelists of endpoints applied to multiple DLP Policies, as opposed to needing to configure them for each DLP and each connector separately via the PPAC.
   
-More information about this solution can be found on this blog post: https://powertricks.io/endpoint-manager
+More information about this solution can be found on this blog post: https://www.powertricks.io/endpoint-manager
 
 ![Endpoint Manager Bulk Rule Creation](/Endpoint%20Manager/Screenshots/epm-bulk-create-rules2.png)
   
@@ -17,7 +17,7 @@ The Solution principally contains:
 - 3 Cloud Flow to maintain metadata tables and manage the deployments of endpoint filtering rules
 - 1 Model Driven App to configure and deloy the endpoint rules
   
-The solution is described in more details in the [related blog post](https://powertricks.io/endpoint-manager).
+The solution is described in more details in the [related blog post](https://www.powertricks.io/endpoint-manager).
 Follow the steps below to set up the solution.
 
 ## Prepare the Azure App for the Business Application Platform API
@@ -40,4 +40,4 @@ Follow the steps below to set up the solution.
 5. Turn on the Flows and run the two below flows:
     - "Epm - Populate Supported Connectors"
     - "Epm - Populate Policies"
-6. Finally, open the Model Driven App and use it as described in the [related blog post](https://powertricks.io/endpoint-manager).
+6. Finally, open the Model Driven App and use it as described in the [related blog post](https://www.powertricks.io/endpoint-manager).

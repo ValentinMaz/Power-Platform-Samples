@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 PowerTricks Blog
+    url: https://www.powertricks.io
+    about: Most samples have a related article here — please check it before filing an issue.

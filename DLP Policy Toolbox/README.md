@@ -3,7 +3,7 @@ The **DLP Policy Toolbox** is a solution built to facilitate the management of D
 - Duplicate an existing DLP Policy in a few clicks with the **DLP Duplicator**
 - Identify all the policies that apply to a specific environment with the **DLP Finder**
 
-More information about this tool can be found on this blog post: https://powertricks.io/dlp-policy-toolbox
+More information about this tool can be found on this blog post: https://www.powertricks.io/dlp-policy-toolbox
 
 ![https://github.com/ValentinMaz/Power-Platform-Samples/blob/9294576d904ff814b3f185c6ab5fc2adad19218b/DLP%20Policy%20Toolbox/Screenshots/DLP%20Policy%20Toolbox%20Screenshot.png](https://github.com/ValentinMaz/Power-Platform-Samples/blob/9294576d904ff814b3f185c6ab5fc2adad19218b/DLP%20Policy%20Toolbox/Screenshots/DLP%20Policy%20Toolbox%20Screenshot.png)
 
@@ -32,4 +32,4 @@ The installation is quick and easy.
 You can customize the Look & Feel of the App by updating the App Formulas for the colors, font size, logo, etc...
 
 ## Use the solution
-The App should be intuitive, but feel free to refer to [the blog post](https://powertricks.io/dlp-policy-toolbox) for more information about how to use the App.
+The App should be intuitive, but feel free to refer to [the blog post](https://www.powertricks.io/dlp-policy-toolbox) for more information about how to use the App.

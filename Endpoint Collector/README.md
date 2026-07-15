@@ -13,7 +13,7 @@ The main features of the solution include:
 - Navigate through the collected data with a Model Driven App
 - Report on the collected data with a Power BI report template
   
-More information about this solution can be found on this blog post: https://powertricks.io/endpoint-collector
+More information about this solution can be found on this blog post: https://www.powertricks.io/endpoint-collector
 
 ![Endpoint Collector MDA](/Endpoint%20Collector/Screenshots/MDA-Endpoints.png)
 
@@ -31,7 +31,7 @@ The Solution principally contains:
 - 1 Model Driven App to browse through the collected data
 - 1 Power BI Report Template to report on the collected data
   
-The solution is described in more details in the [related blog post](https://powertricks.io/endpoint-collector).
+The solution is described in more details in the [related blog post](https://www.powertricks.io/endpoint-collector).
 Follow the steps below to set up the solution.
 
 ## Install the solution

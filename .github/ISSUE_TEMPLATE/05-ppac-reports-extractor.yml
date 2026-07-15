@@ -3,6 +3,16 @@ description: File a Bug, question or feature ask report for the PPAC Reports Ext
 title: "[PPAC Reports Extractor] TOPIC TITLE"
 labels: ["ppac reports extractor"]
 body:
+- type: dropdown
+  id: issue-type
+  attributes:
+    label: What kind of issue is this?
+    options:
+      - Bug
+      - Question
+      - Feature request
+  validations:
+    required: true
 - type: textarea
   attributes:
     label: Describe your bug, question or feature ask.

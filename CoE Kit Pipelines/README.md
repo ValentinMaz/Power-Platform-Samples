@@ -5,7 +5,7 @@ While these pipelines are tailored for the CoE Kit core components, they can eas
 
 Microsoft recommends updating the CoE Kit at least every 3 months to benefit from the latest features, improvements, and security updates. These pipelines help Power Platform admins automate and standardize the upgrade process, making it faster, more reliable, and less error-prone.
 
-For more information about the use case, upgrade strategies, and best practices, visit [PowerTricks.io](https://powertricks.io/coe-kit-pipelines).
+For more information about the use case, upgrade strategies, and best practices, visit [PowerTricks.io](https://www.powertricks.io/coe-kit-pipelines).
 
 ## Pre-requisites — CoE Starter Kit ALM with Azure DevOps
 

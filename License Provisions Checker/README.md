@@ -3,7 +3,7 @@ The **License Provisions Checker** is a free Solution to automatically extract i
 - Identify and receive alert about expiring licenses
 - Identify opportunities to optimize costs by decommissionning lower license packs and purchasing bigger and cheapker packs instead for the same quantity of licenses
 - Centralize information about all licenses, purchased sku units as well as actual license quantities in the tenant that are provisioned, assigned and consumed 
-More information about this solution can be found on this blog post: https://powertricks.io/license-provisions-checker
+More information about this solution can be found on this blog post: https://www.powertricks.io/license-provisions-checker
 
 ![License Provisions Checker](/License%20Provisions%20Checker/Screenshots/lpc-home.png)
 
@@ -19,7 +19,7 @@ More information about this solution can be found on this blog post: https://pow
 The Solution principally contains:
 - 3 Dataverse tables to store information about purchased skus, licenses and to keep a history of previous license quantities
 - 3 Cloud Flows: 1 to configure the license and sku tables, 1 to automatically update the license and purchased sku quantities every day, and 1 to save a snapshot of license quantities regularly for history logging 
-The solution is described in more details in the [related blog post](https://powertricks.io/license-provisions-checker).
+The solution is described in more details in the [related blog post](https://www.powertricks.io/license-provisions-checker).
 Follow the steps below to set up the solution.
 
 ## Prepare the Azure App for the Graph API

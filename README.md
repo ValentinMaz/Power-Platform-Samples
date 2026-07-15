@@ -1,6 +1,6 @@
 # Power Platform Samples
 This repository contains Power Platform samples and templates that I share with the community, mainly centered around Governance.
-Most of these samples and templates come with a related article in my blog https://powertricks.io.
+Most of these samples and templates come with a related article in my blog https://www.powertricks.io.
 In this GitHub Repo you will find:
 - [Power BI Templates](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/PowerBI%20Templates): a serie of Power BI templates which can be used to extend the CoE Kit and gain additional insights on things such as API Calls and AI Builder
 - [Dataverse Training Labs](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/Dataverse%20Training%20Labs): Self-pace Dataverse Labs to get hands on experience on Dataverse across most fundamental features
@@ -17,3 +17,4 @@ In this GitHub Repo you will find:
 - [Endpoint Manager](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/Endpoint%20Manager): a solution to manage endpoint and custom connector pattern filtering rules for DLP Policies at scale.
 - [CoE Kit Pipelines](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/CoE%20Kit%20Pipelines/): reusable Azure DevOps pipelines to automate syncing, settings generation and deployment of CoE Starter Kit solutions across Source, Dev and Prod environments, accelerating standardized upgrades.
 - [Copilot Studio Monitor](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/Copilot%20Studio%20Monitor/): extends the CoE Starter Kit to surface detailed configuration metadata for Copilot Studio agents (topics, tools, connectors, knowledge sources, autonomy flags) and includes a Power BI template for governance reporting.
+- [Agent Creation Blocker](https://github.com/ValentinMaz/Power-Platform-Samples/tree/main/Agent%20Creation%20Blocker/): a reusable control to block Copilot Studio agent creation at the environment level, intercepting it at the Dataverse layer, logging attempts centrally and notifying makers via Teams with governance guidance.

@@ -1,6 +1,6 @@
 # ============================================================================
 # Title: Generate settings.sample.json from Dataverse Web API + PR
-# Author: Valentin Mazhar  |  More info at: https://powertricks.io/coe-kit-pipelines
+# Author: Valentin Mazhar  |  More info at: https://www.powertricks.io/coe-kit-pipelines
 # What this pipeline does
 #   - Reads Dataverse via Web API using a Power Platform (SPN) service connection
 #   - Builds a raw settings.sample.json honoring the repo template schema
