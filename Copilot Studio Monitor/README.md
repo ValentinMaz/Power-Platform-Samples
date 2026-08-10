@@ -6,7 +6,7 @@ Two Power BI template variants are available: a **core template** reporting on a
 
 More background, rationale and screenshots are in the related blog post: https://www.powertricks.io/copilot-studio-monitor
 
-![Copilot Studio Monitor Screenshot](Screenshots/CSM_OVerview.png)
+![Copilot Studio Monitor Screenshot](/Copilot%20Studio%20Monitor/Screenshots/CSM_OVerview.png)
 
 ## Pre-requisites
 - Tenant using Copilot Studio (agents created from the Copilot Studio portal)
