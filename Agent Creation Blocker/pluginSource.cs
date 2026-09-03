@@ -16,6 +16,9 @@ namespace LogAgentCreationAttempt
     //   1. Identifies the initiating user and reads their email.
     //   2. Allows the creation if the email matches the allow-list stored in the
     //      Environment Variable "ptricks_AgentCreationAllowedEmailContains"; otherwise blocks it.
+    //      When "ptricks_AgentCreationBlockGitHubCopilotHarnessOnly" is TRUE, that block is
+    //      narrowed to only fire for agents whose "template" column starts with "cli" (the
+    //      GitHub Copilot CLI harness); all other agents are then governed by the allow-list alone.
     //   3. POSTs an audit payload to a Power Automate Flow (URL from the Environment Variable
     //      "ptricks_AgentCreationLoggingFlowUrl") regardless of the block decision. The HTTP
     //      call never prevents the block from being enforced.
@@ -115,6 +118,17 @@ namespace LogAgentCreationAttempt
         private const string AllowedEmailContainsEnvironmentVariableSchemaName = "ptricks_AgentCreationAllowedEmailContains";
         private const string BlockMessageEnvironmentVariableSchemaName = "ptricks_AgentCreationBlockMessage";
 
+        // Yes/No Environment Variable. When TRUE, a would-be block is only enforced for agents
+        // created by the GitHub Copilot (GHC) harness — identified by a "template" column value
+        // that starts with "cli". When FALSE, blank or unset, the block applies regardless of
+        // template. Dataverse serialises a Yes/No variable's value as the string "true" / "false".
+        private const string GhcHarnessOnlyEnvironmentVariableSchemaName = "ptricks_AgentCreationBlockGitHubCopilotHarnessOnly";
+
+        // The "bot" column inspected in GHC-harness-only mode; a value starting with this prefix
+        // marks an agent created by the GitHub Copilot (GHC) harness.
+        private const string BotTemplateColumnName = "template";
+        private const string GhcHarnessTemplatePrefix = "cli";
+
         // Deadline for the Flow HTTP call so a slow endpoint cannot stall the Dataverse pipeline.
         private const int FlowTimeoutMs = 4000;
 
@@ -189,6 +203,39 @@ namespace LogAgentCreationAttempt
                 allowedEmailContainsValues.Count,
                 isAllowedByEmailContains,
                 shouldBlock);
+
+            // GHC-harness-only mode: when the Yes/No variable is TRUE, narrow the block so it only
+            // catches agents created by the GitHub Copilot (GHC) harness (template starts with
+            // "cli"). Any other agent — including one whose template is missing or unreadable — is
+            // left to the email allow-list alone, so a genuine GHC-harness create can never slip
+            // through by omitting the column (fail-closed). When the variable is FALSE/blank/unset,
+            // the block is unchanged.
+            if (shouldBlock && IsGhcHarnessOnlyModeEnabled(systemService, tracingService))
+            {
+                var template = target.Contains(BotTemplateColumnName)
+                    ? target.GetAttributeValue<string>(BotTemplateColumnName)
+                    : null;
+                var isGhcHarnessCreate = !string.IsNullOrWhiteSpace(template)
+                    && template.Trim().StartsWith(GhcHarnessTemplatePrefix, StringComparison.OrdinalIgnoreCase);
+
+                if (isGhcHarnessCreate)
+                {
+                    blockReason = "GHC-harness-only mode is on and bot.template starts with \"" + GhcHarnessTemplatePrefix + "\" — enforcing the block.";
+                }
+                else
+                {
+                    shouldBlock = false;
+                    blockReason = string.IsNullOrWhiteSpace(template)
+                        ? "GHC-harness-only mode is on and bot.template is missing/unreadable — not blocking (block is scoped to GHC-harness creates only)."
+                        : "GHC-harness-only mode is on and bot.template does not start with \"" + GhcHarnessTemplatePrefix + "\" — not blocking.";
+                }
+
+                tracingService?.Trace(
+                    "LogAgentCreationAttemptPlugin: GHC-harness-only mode active. Template={0}, IsGhcHarnessCreate={1}, ShouldBlock={2}",
+                    template,
+                    isGhcHarnessCreate,
+                    shouldBlock);
+            }
 
             // May be blank at PreValidation before Dataverse fills default fields.
             var displayName = ResolveDisplayName(target) ?? "(display name not provided)";
@@ -391,6 +438,24 @@ namespace LogAgentCreationAttempt
                 tracingService?.Trace("LogAgentCreationAttemptPlugin: Environment variable lookup for {0} failed. Error={1}", schemaName, ex);
                 return null;
             }
+        }
+
+        // True only when the GHC-harness-only Yes/No Environment Variable resolves to an affirmative
+        // value. Dataverse serialises a Yes/No variable as the string "true" / "false"; "1" and
+        // "yes" are also accepted defensively. Anything else — including null, blank, "false" or an
+        // unreadable variable — is false, so the block stays broad unless deliberately narrowed.
+        private static bool IsGhcHarnessOnlyModeEnabled(IOrganizationService systemService, ITracingService tracingService)
+        {
+            var raw = GetEnvironmentVariableValue(systemService, GhcHarnessOnlyEnvironmentVariableSchemaName, tracingService);
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return false;
+            }
+
+            var normalized = raw.Trim().Trim('"', '\'');
+            return normalized.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("1", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("yes", StringComparison.OrdinalIgnoreCase);
         }
 
         // Safely extracts a string from an AliasedValue (present when a joined entity's column

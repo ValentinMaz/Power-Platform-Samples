@@ -8,7 +8,7 @@ This README is the **technical setup reference**. For the rationale, when to use
 
 ## How it works
 1. A maker tries to create an agent; Copilot Studio writes a record into the `bot` table.
-2. The **satellite** plugin runs on `Create` of `bot` (PreValidation stage) and evaluates the maker against the allow-list.
+2. The **satellite** plugin runs on `Create` of `bot` (PreValidation stage) and evaluates the maker against the allow-list. In *GitHub Copilot harness–only* mode (see [Configuration](#configuration)) the block is further narrowed to agents created by that harness (`bot.template` starts with `cli`); all other agents are then left to the allow-list alone.
 3. The plugin calls the **core** logging flow (HTTP POST) to record the attempt.
 4. If the maker is not allowed, the plugin throws an `InvalidPluginExecutionException`, so the `bot` write is rolled back and creation fails.
 5. The core notification flow posts the Teams Adaptive Card to the maker and marks the attempt as notified.
@@ -37,6 +37,7 @@ The control ships as two solutions. Both are provided as Managed and Unmanaged p
 | Environment variable | `ptricks_AgentCreationLoggingFlowUrl` | Core logging-flow endpoint to POST attempts to |
 | Environment variable | `ptricks_AgentCreationBlockMessage` | Exception message thrown when creation is blocked |
 | Environment variable | `ptricks_AgentCreationAllowedEmailContains` | Comma-separated allow-list of email patterns |
+| Environment variable | `ptricks_AgentCreationBlockGitHubCopilotHarnessOnly` | Yes/No — when set to Yes, only block agents created by the GitHub Copilot harness |
 | Connection reference | Microsoft Dataverse | Used by the self-healing flow |
 
 ## Pre-requisites
@@ -61,6 +62,7 @@ Install the satellite in the central environment first so it can be configured o
    - `ptricks_AgentCreationLoggingFlowUrl` → the logging-flow URL copied above.
    - `ptricks_AgentCreationBlockMessage` → the exception message to throw.
    - `ptricks_AgentCreationAllowedEmailContains` → the allow-list (comma-separated email patterns; leave empty to block everyone).
+   - `ptricks_AgentCreationBlockGitHubCopilotHarnessOnly` → `No` to block all agent creation (default), or `Yes` to only block agents created by the GitHub Copilot harness while leaving all other agents to the allow-list.
 3. Turn on the `bac - Auto Turn On Plugin Step` flow.
 
 ### 3. Distribute to each blocked environment
@@ -80,6 +82,17 @@ All per-environment behavior is exposed through environment variables — no plu
 | `ptricks_AgentCreationLoggingFlowUrl` | Satellite | Core logging-flow endpoint each satellite POSTs to |
 | `ptricks_AgentCreationBlockMessage` | Satellite | Exception message thrown when creation is blocked |
 | `ptricks_AgentCreationAllowedEmailContains` | Satellite | Comma-separated email patterns; a match allows creation (still logged) |
+| `ptricks_AgentCreationBlockGitHubCopilotHarnessOnly` | Satellite | Yes/No — `No` blocks all agent creation; `Yes` scopes the block to GitHub Copilot harness agents only (see below) |
+
+### Block scope: all agents vs. GitHub Copilot harness only
+`ptricks_AgentCreationBlockGitHubCopilotHarnessOnly` is a Yes/No variable that controls *what* the block applies to. The allow-list still runs first in both modes — a maker whose email matches is always allowed (and logged).
+
+| Value | Behavior |
+|---|---|
+| `No`, blank, or unset (default) | A maker not on the allow-list is blocked from creating **any** agent. |
+| `Yes` | A maker not on the allow-list is blocked **only** when the agent was created by the GitHub Copilot harness — detected by `bot.template` starting with `cli`. Every other agent is left to the allow-list alone. If the template is missing or unreadable the create is **not** blocked in this mode. |
+
+Use `Yes` when the environment should stay open for regular Copilot Studio authoring but block agents spun up programmatically through the GitHub Copilot CLI harness.
 
 ### Notification card JSON
 `ptricks_AgentCreationCardSettings` is a single JSON object. `IntroText` supports the `{AgentName}` and `{EnvironmentName}` tokens, substituted at runtime. Each `Links` entry has a `Title`, a `Url`, and an optional `Style` (e.g. `positive`, `destructive`; omit for the default). Below is the default value shipped with the solution — replace the image, texts and links with your own governance guidance.
