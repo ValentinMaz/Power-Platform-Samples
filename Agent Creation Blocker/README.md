@@ -11,7 +11,7 @@ This README is the **technical setup reference**. For the rationale, when to use
 2. The **satellite** plugin runs on `Create` of `bot` (PreValidation stage) and evaluates the maker against the allow-list. In *GitHub Copilot harness–only* mode (see [Configuration](#configuration)) the block is further narrowed to agents created by that harness (`bot.template` starts with `cli`); all other agents are then left to the allow-list alone.
 3. The plugin calls the **core** logging flow (HTTP POST) to record the attempt.
 4. If the maker is not allowed, the plugin throws an `InvalidPluginExecutionException`, so the `bot` write is rolled back and creation fails.
-5. The core notification flow posts the Teams Adaptive Card to the maker and marks the attempt as notified.
+5. The core notification flow posts a Teams Adaptive Card to the maker who has been blocked and marks the attempt as notified.
 
 > **Note:** This relies on current platform behavior — Copilot Studio writing the new agent into the `bot` table at creation time. That behavior is not officially documented, so a future platform change could stop the interception from firing. If that happens the block simply stops taking effect; uninstalling the satellite solution removes the control entirely, with no residual effect on agent creation.
 
@@ -24,8 +24,9 @@ The control ships as two solutions. Both are provided as Managed and Unmanaged p
 | Table | `ptricks_agentcreationattempt` | Central log of every attempt (see [columns](#the-attempt-table)) |
 | Model-driven app | `Agent Creation Attempt` | Review logged attempts |
 | Cloud flow | `bac - Log Agent Creation Attempt` | HTTP-triggered; called by the satellite plugin, writes the attempt record |
-| Cloud flow | `bac - Notify Maker After Block` | Dataverse-triggered; posts the Teams Adaptive Card, then marks the attempt notified |
-| Environment variable | `ptricks_AgentCreationCardSettings` | JSON driving the Teams card (see [Configuration](#configuration)) |
+| Cloud flow | `bac - Notify Maker After Block` | Dataverse-triggered; posts the Teams Adaptive Card, then marks the attempt as notified |
+| Environment variable | `ptricks_AgentCreationCardSettings` | JSON driving the standard Teams card (see [Configuration](#configuration)) |
+| Environment variable | `ptricks_AgentCreationCardSettingsGHCOnly` | JSON driving the Teams card for the github/copilot-harness-only blocks (see [Configuration](#configuration)) |
 | Connection references | Microsoft Dataverse, Office 365 Users, Power Platform for Admins, Microsoft Teams | Used by the two core flows |
 
 ### `BlockAgentCreationSat` — installed in every blocked environment
@@ -51,7 +52,9 @@ Set up the core once, configure the satellite in that same central environment, 
 
 ### 1. Install and configure the core solution
 1. Import `BlockAgentCreationCore` into the central environment and set the connection references when prompted.
-2. Set the `ptricks_AgentCreationCardSettings` environment variable (see [Configuration](#configuration)).
+2. Set the two card environment variables (see [Configuration](#configuration)):
+   - `ptricks_AgentCreationCardSettings` → the card sent when the maker was blocked from creating any agent.
+   - `ptricks_AgentCreationCardSettingsGHCOnly` → the card sent when the maker was blocked for using the GitHub Copilot harness.
 3. Turn on both flows (`bac - Log Agent Creation Attempt`, `bac - Notify Maker After Block`).
 4. Open `bac - Log Agent Creation Attempt` and copy the URL of its **When an HTTP request is received** trigger — the satellite needs it.
 
@@ -78,7 +81,8 @@ All per-environment behavior is exposed through environment variables — no plu
 
 | Environment variable | Solution | Controls |
 |---|---|---|
-| `ptricks_AgentCreationCardSettings` | Core | JSON driving the Teams Adaptive Card (see below) |
+| `ptricks_AgentCreationCardSettings` | Core | JSON for the Teams card sent after a standard block (see below) |
+| `ptricks_AgentCreationCardSettingsGHCOnly` | Core | JSON for the Teams card sent after a harness-only block (see below) |
 | `ptricks_AgentCreationLoggingFlowUrl` | Satellite | Core logging-flow endpoint each satellite POSTs to |
 | `ptricks_AgentCreationBlockMessage` | Satellite | Exception message thrown when creation is blocked |
 | `ptricks_AgentCreationAllowedEmailContains` | Satellite | Comma-separated email patterns; a match allows creation (still logged) |
@@ -94,8 +98,15 @@ All per-environment behavior is exposed through environment variables — no plu
 
 Use `Yes` when the environment should stay open for regular Copilot Studio authoring but block agents spun up programmatically through the GitHub Copilot CLI harness.
 
-### Notification card JSON
-`ptricks_AgentCreationCardSettings` is a single JSON object. `IntroText` supports the `{AgentName}` and `{EnvironmentName}` tokens, substituted at runtime. Each `Links` entry has a `Title`, a `Url`, and an optional `Style` (e.g. `positive`, `destructive`; omit for the default). Below is the default value shipped with the solution — replace the image, texts and links with your own governance guidance.
+### Notification cards
+A maker can be blocked for two different reasons, so the card comes in two variants and the maker is told the one that actually applies. The notify flow picks between them on the `ptricks_isblockinggithubcopilotharnessonly` column of the attempt record:
+
+| Attempt flagged as harness-only | Card variable used | Why the maker was blocked |
+|---|---|---|
+| No | `ptricks_AgentCreationCardSettings` | They are in an environment where agent creation is not allowed at all. |
+| Yes | `ptricks_AgentCreationCardSettingsGHCOnly` | The environment allows regular Copilot Studio authoring; they were blocked for creating the agent through the GitHub Copilot harness. |
+
+Both variables hold the same JSON shape, so you write the wording once per scenario. `IntroText` supports the `{AgentName}` and `{EnvironmentName}` tokens, substituted at runtime. Each `Links` entry has a `Title`, a `Url`, and an optional `Style` (e.g. `positive`, `destructive`; omit for the default). Below is the default shipped in `ptricks_AgentCreationCardSettings` — replace the image, texts and links with your own governance guidance, and give `ptricks_AgentCreationCardSettingsGHCOnly` its own wording pointing at the approved way to create agents programmatically.
 
 ```json
 {
@@ -132,6 +143,7 @@ Every attempt (blocked or allowed) is written to `ptricks_agentcreationattempt` 
 | `ptricks_environmentdisplayname` / `ptricks_environmentid` | Environment where creation was attempted |
 | `ptricks_attemptedon` | Timestamp of the attempt |
 | `ptricks_blocked` | Whether the attempt was blocked or allowed via the allow-list |
+| `ptricks_isblockinggithubcopilotharnessonly` | Whether the environment was in harness-only mode for this attempt; selects which notification card is sent |
 | `ptricks_notificationstatus` | Teams notification state (e.g. Not needed / Completed) |
 
 See the [blog post](https://www.powertricks.io/block-agent-creation) for how to use this signal for governance and enablement.

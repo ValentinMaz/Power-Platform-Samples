@@ -103,6 +103,12 @@ namespace LogAgentCreationAttempt
 
             [DataMember(Name = "blockReason")]
             public string BlockReason { get; set; }
+
+            // Resolved value of the "ptricks_AgentCreationBlockGitHubCopilotHarnessOnly" Yes/No
+            // Environment Variable at the time of this attempt. TRUE means a would-be block was
+            // narrowed to GitHub Copilot (GHC) harness creates only.
+            [DataMember(Name = "ghcHarnessOnlyMode")]
+            public bool GhcHarnessOnlyMode { get; set; }
         }
 
         // Dataverse logical name for a Copilot Studio agent.
@@ -204,13 +210,17 @@ namespace LogAgentCreationAttempt
                 isAllowedByEmailContains,
                 shouldBlock);
 
+            // Resolved once here so it can both drive the block-narrowing below and be recorded in
+            // the audit payload regardless of the block decision.
+            var ghcHarnessOnlyMode = IsGhcHarnessOnlyModeEnabled(systemService, tracingService);
+
             // GHC-harness-only mode: when the Yes/No variable is TRUE, narrow the block so it only
             // catches agents created by the GitHub Copilot (GHC) harness (template starts with
             // "cli"). Any other agent — including one whose template is missing or unreadable — is
             // left to the email allow-list alone, so a genuine GHC-harness create can never slip
             // through by omitting the column (fail-closed). When the variable is FALSE/blank/unset,
             // the block is unchanged.
-            if (shouldBlock && IsGhcHarnessOnlyModeEnabled(systemService, tracingService))
+            if (shouldBlock && ghcHarnessOnlyMode)
             {
                 var template = target.Contains(BotTemplateColumnName)
                     ? target.GetAttributeValue<string>(BotTemplateColumnName)
@@ -252,6 +262,7 @@ namespace LogAgentCreationAttempt
                 initiatingUser,
                 shouldBlock,
                 blockReason,
+                ghcHarnessOnlyMode,
                 attemptedOnUtc);
 
             if (shouldBlock)
@@ -285,6 +296,7 @@ namespace LogAgentCreationAttempt
             InitiatingUserDetails initiatingUser,
             bool shouldBlock,
             string blockReason,
+            bool ghcHarnessOnlyMode,
             DateTime attemptedOnUtc)
         {
             var flowUrl = GetEnvironmentVariableValue(systemService, FlowUrlEnvironmentVariableSchemaName, tracingService);
@@ -318,7 +330,8 @@ namespace LogAgentCreationAttempt
                     InitiatingUserEntraObjectId = initiatingUser?.EntraObjectId,
                     UserId = context.UserId.ToString(),
                     ShouldBlock = shouldBlock,
-                    BlockReason = blockReason
+                    BlockReason = blockReason,
+                    GhcHarnessOnlyMode = ghcHarnessOnlyMode
                 };
 
                 var body = SerializePayload(payload);
