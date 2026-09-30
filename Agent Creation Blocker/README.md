@@ -54,7 +54,7 @@ Set up the core once, configure the satellite in that same central environment, 
 1. Import `BlockAgentCreationCore` into the central environment and set the connection references when prompted.
 2. Set the two card environment variables (see [Configuration](#configuration)):
    - `ptricks_AgentCreationCardSettings` → the card sent when the maker was blocked from creating any agent.
-   - `ptricks_AgentCreationCardSettingsGHCOnly` → the card sent when the maker was blocked for using the GitHub Copilot harness.
+   - `ptricks_AgentCreationCardSettingsGHCOnly` → the card sent when the maker was blocked just for using the GitHub Copilot harness but wouldn't have been blocked if they has used the Standard harness.
 3. Turn on both flows (`bac - Log Agent Creation Attempt`, `bac - Notify Maker After Block`).
 4. Open `bac - Log Agent Creation Attempt` and copy the URL of its **When an HTTP request is received** trigger — the satellite needs it.
 

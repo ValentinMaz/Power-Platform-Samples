@@ -70,12 +70,12 @@ When opening it for the first time, you will be prompted to configure the below 
 
 **Please Note**: for Copilot Studio, each extract automatically downloaded contains 6 months worth of data.
 
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-AIBuilder.png)
+![PPAC Report Extractor Report](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-AIBuilder.png)
 
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICallsFlows.png)
+![PPAC Report Extractor Report](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICallsFlows.png)
 
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICalls.png)
+![PPAC Report Extractor Report](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICalls.png)
 
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICallsNonLicensed.png)
+![PPAC Report Extractor Report](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-APICallsNonLicensed.png)
 
-![Chatbot Remover Screenshot](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-Messages.png)
+![PPAC Report Extractor Report](/PPAC%20Reports%20Extractor/Screenshots/daily-consumption-Messages-2.png)
