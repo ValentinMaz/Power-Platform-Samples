@@ -130,6 +130,8 @@ The allow-list runs alongside it: a maker whose email matches `ptricks_AgentCrea
 - **plain text**, used for every block, or
 - **a JSON object** with a message per block scope. `PartialBlock` supports the `{HarnessName}` and `{AllowedHarnesses}` tokens. If the key for the current scope is missing or blank, `FullBlock` is used, then a built-in default.
 
+![Copilot Studio error shown to the maker when agent creation is blocked, surfacing the custom plugin exception message](Screenshots/bac-errorModernExperience.png)
+
 ```json
 {
   "FullBlock": "Copilot Studio agent creation is not supported in this environment. Contact your administrator for more information.",
@@ -144,6 +146,10 @@ The allow-list runs alongside it: a maker whose email matches `ptricks_AgentCrea
 |---|---|---|
 | `FullBlock` | No harness is allowed in the environment | Agent creation is not allowed here; go to an approved environment |
 | `PartialBlock` | Another harness is allowed | This harness is not allowed here; create the agent on an allowed harness instead |
+
+| Full block card | Partial block card |
+|---|---|
+| ![Teams card after a full block, stating that agent creation is blocked in this environment and pointing to the approved environments and the CoE team](Screenshots/bac-TeamsNotif.png) | ![Teams card after a partial block, stating that GitHub Copilot agents cannot be created in this environment and suggesting a Standard or Copilot Chat agent instead](Screenshots/bac-TeamsNotifPartialBlock.png) |
 
 Each card holds `CardImageLink`, `TitleText`, `IntroText`, `NextStepsText` and `Links`. Each `Links` entry has a `Title`, a `Url`, and an optional `Style` (e.g. `positive`, `destructive`; omit for the default). **Any field missing from `PartialBlock` is taken from `FullBlock`**, so the image and links only need to be written once.
 
@@ -179,6 +185,22 @@ Below is the value shipped in the solution. Replace the image, texts and links w
 ```
 
 The flow also still accepts the single-card shape of the previous version (the fields at the root, without `FullBlock` and `PartialBlock`), but partial blocks then get the full block wording.
+
+## Verifying the setup
+After setting up a blocked environment:
+1. With a maker account that is **not** on the email allow-list, create an agent on a harness that is not in `ptricks_AgentCreationAllowedHarnesses`. Creation should fail, and a row should appear in the `Agent Creation Attempt` app with **Blocked** = Yes and the expected **Block Scope**.
+2. Within a few minutes, the maker should receive the Teams card matching that block scope, and the row's notification status should move to *Completed*.
+3. If a harness is allowed, create an agent on it: creation should succeed, with a row logged as **Blocked** = No and **Block Scope** = `None`.
+
+### Troubleshooting
+| Symptom | Where to look |
+|---|---|
+| Creation is not blocked and no row is logged | The plugin step `Create of bot` may be disabled, or the satellite is not installed in that environment. Check that `bac - Auto Turn On Plugin Step` is on. |
+| Creation is blocked, but no row is logged | `ptricks_AgentCreationLoggingFlowUrl` is wrong or `bac - Log Agent Creation Attempt` is off. The HTTP call never prevents the block, so blocking keeps working regardless. |
+| A harness is blocked or allowed unexpectedly | Check the row's **Agent Template** and **Harness** columns against [Harness resolution](#harness-resolution), and the **Allowed Harnesses** column for the harnesses allowed at the time. The plugin trace log also records the resolved harness, the parsed list, and any ignored entries. |
+| The row is logged, but no card is sent | `bac - Notify Maker After Block` is off, or its run failed (the row then shows a failed notification status). |
+| Partial blocks get the full block card | `ptricks_AgentCreationCardSettings` still holds the single-card shape of the previous version; switch it to the two-key value. |
+| The Copilot Studio error does not show the custom message | Expected at times: the portal does not always surface plugin messages. The Teams card is the reliable channel. |
 
 ## Keeping the control enabled
 Any user with the Environment Maker role can disable a plugin step, which would silently switch off the control. The satellite's `bac - Auto Turn On Plugin Step` flow watches the step and re-enables it automatically; makers do not have access to that flow. Disabling the control on purpose is therefore a deliberate admin action:
@@ -218,7 +240,7 @@ Follow these steps in order:
 2. **Check for unmanaged customizations** on the Agent Creation Attempt form and views. One that still references the old column blocks the deletion during the upgrade.
 3. **Import Core first**, as an **upgrade** (`pac solution import --stage-and-upgrade`, or "Upgrade" in the portal). An "Update" leaves the retired column and variables behind. Core must come first: the previous logging flow requires a field the new plugin no longer sends.
 4. **Set `ptricks_AgentCreationCardSettings` to the two-key value** (see [Notification cards](#notification-cards)). Move the old GHC-only card text into `PartialBlock`, replacing "GitHub Copilot" with `{HarnessName}` where it appears. Until this is done, partial blocks get the full block wording.
-5. **Import the Satellite straight after**, also as an **upgrade**, in each blocked environment. Set `ptricks_AgentCreationAllowedHarnesses` during the import (for example with a deployment settings file), translating the old setting:
+5. **Import the Satellite straight after**, also as an **upgrade**, in each blocked environment. Set `ptricks_AgentCreationAllowedHarnesses` during the import (the portal prompts for it since it has no value, or use a deployment settings file), translating the old setting:
 
    | Old `…BlockGitHubCopilotHarnessOnly` | New `ptricks_AgentCreationAllowedHarnesses` |
    |---|---|
@@ -229,5 +251,17 @@ Follow these steps in order:
 6. **Optionally switch `ptricks_AgentCreationBlockMessage` to the two-key JSON** (see [Block message](#block-message)). The plain-text value keeps working for both block scopes.
 
 Between steps 3 and 5, blocks from the previous plugin still work, and partial blocks get the full block card. Attempts logged before the upgrade have no block scope and also get the full block card if they are ever re-notified.
+
+> **Unmanaged installations:** importing an unmanaged solution never deletes components, so the retired environment variables and the `ptricks_isblockinggithubcopilotharnessonly` column stay behind after the import. They are no longer used and can be deleted manually once every satellite runs the new version. The upgrade order above still applies.
+
+## Version history
+Previous packages are kept in [`Older Versions/`](Older%20Versions/).
+
+| Version | Solutions | Changes |
+|---|---|---|
+| `2026.11.23.0` | Core, Satellite | Blocking per harness: `ptricks_AgentCreationAllowedHarnesses`, full and partial block scopes, two-key card settings and block message, five new attempt columns. Replaces the GitHub Copilot harness-only setting. See [Upgrading from 2026.09.04.1](#upgrading-from-2026090041). |
+| `2026.09.04.1` | Core, Satellite | Separate Teams card for GitHub Copilot harness-only blocks (`ptricks_AgentCreationCardSettingsGHCOnly`). |
+| `2026.09.03.1` | Satellite | GitHub Copilot harness-only mode (`ptricks_AgentCreationBlockGitHubCopilotHarnessOnly`). |
+| `2026.07.15` | Core (`.1`), Satellite (`.3`) | Initial release: environment-level blocking, email allow-list, central logging, Teams notification, self-healing plugin step. |
 
 See the [blog post](https://www.powertricks.io/block-agent-creation) for how to use this signal for governance and enablement.
