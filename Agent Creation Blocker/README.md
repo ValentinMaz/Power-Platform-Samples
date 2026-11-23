@@ -6,7 +6,7 @@ This README is the **technical setup reference**. For the rationale, when to use
 
 ![Architecture: a satellite solution in each blocked environment intercepts agent creation and calls a core solution in a central environment for centralized logging and Teams notification](Screenshots/block-agent-creation-arch.webp)
 
-**Current version: `2026.11.23.0`** (Core and Satellite). Upgrading from `2026.09.04.1`? Follow [Upgrading from 2026.09.04.1](#upgrading-from-2026090041): the upgrade order matters.
+**Current version: `2026.11.23.0`** (Core and Satellite). Upgrading from `2026.09.04.1`? Follow [Upgrading from a previous version](#upgrading-from-a-previous-version): the upgrade order matters.
 
 ## How it works
 1. A maker tries to create an agent; Copilot Studio writes a record into the `bot` table.
@@ -53,7 +53,7 @@ The control ships as two solutions. Both are provided as Managed and Unmanaged p
 ## Setup
 Set up the core once, configure the satellite in that same central environment, then export the configured satellite and distribute it to each blocked environment.
 
-> Already running `2026.09.04.1`? Do not follow these steps; follow [Upgrading from 2026.09.04.1](#upgrading-from-2026090041) instead.
+> Already running `2026.09.04.1`? Do not follow these steps; follow [Upgrading from a previous version](#upgrading-from-a-previous-version) instead.
 
 ### 1. Install and configure the core solution
 1. Import `BlockAgentCreationCore` into the central environment and set the connection references when prompted.
@@ -225,8 +225,8 @@ Every attempt (blocked or allowed) is written to `ptricks_agentcreationattempt` 
 
 ![Agent Creation Attempt view listing a full block, a partial block, and an allowed attempt with their harness and block scope](Screenshots/bac-AttemptLogTable.png)
 
-## Upgrading from 2026.09.04.1
-Version `2026.11.23.0` replaces the Yes/No GitHub Copilot harness-only setting with the allowed harnesses list. It removes:
+## Upgrading from a previous version
+These steps upgrade an installation of `2026.09.04.1` to `2026.11.23.0`. Version `2026.11.23.0` replaces the Yes/No GitHub Copilot harness-only setting with the allowed harnesses list. It removes:
 
 - `ptricks_AgentCreationBlockGitHubCopilotHarnessOnly` (Satellite), replaced by `ptricks_AgentCreationAllowedHarnesses`;
 - `ptricks_AgentCreationCardSettingsGHCOnly` (Core), replaced by the `PartialBlock` key of `ptricks_AgentCreationCardSettings`;
@@ -259,7 +259,7 @@ Previous packages are kept in [`Older Versions/`](Older%20Versions/).
 
 | Version | Solutions | Changes |
 |---|---|---|
-| `2026.11.23.0` | Core, Satellite | Blocking per harness: `ptricks_AgentCreationAllowedHarnesses`, full and partial block scopes, two-key card settings and block message, five new attempt columns. Replaces the GitHub Copilot harness-only setting. See [Upgrading from 2026.09.04.1](#upgrading-from-2026090041). |
+| `2026.11.23.0` | Core, Satellite | Blocking per harness: `ptricks_AgentCreationAllowedHarnesses`, full and partial block scopes, two-key card settings and block message, five new attempt columns. Replaces the GitHub Copilot harness-only setting. See [Upgrading from a previous version](#upgrading-from-a-previous-version). |
 | `2026.09.04.1` | Core, Satellite | Separate Teams card for GitHub Copilot harness-only blocks (`ptricks_AgentCreationCardSettingsGHCOnly`). |
 | `2026.09.03.1` | Satellite | GitHub Copilot harness-only mode (`ptricks_AgentCreationBlockGitHubCopilotHarnessOnly`). |
 | `2026.07.15` | Core (`.1`), Satellite (`.3`) | Initial release: environment-level blocking, email allow-list, central logging, Teams notification, self-healing plugin step. |
