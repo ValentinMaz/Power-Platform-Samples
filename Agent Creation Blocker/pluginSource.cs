@@ -14,12 +14,14 @@ namespace LogAgentCreationAttempt
     // Dataverse plug-in that fires on the Create message for the "bot" entity
     // (Copilot Studio agent). On every agent-creation attempt it:
     //   1. Identifies the initiating user and reads their email.
-    //   2. Allows the creation if the email matches the allow-list stored in the
-    //      Environment Variable "ptricks_AgentCreationAllowedEmailContains"; otherwise blocks it.
-    //      When "ptricks_AgentCreationBlockGitHubCopilotHarnessOnly" is TRUE, that block is
-    //      narrowed to only fire for agents whose "template" column starts with "cli" (the
-    //      GitHub Copilot CLI harness); all other agents are then governed by the allow-list alone.
-    //   3. POSTs an audit payload to a Power Automate Flow (URL from the Environment Variable
+    //   2. Resolves the agent's harness (Standard, Copilot Chat, GitHub Copilot, Customer
+    //      Conversation or Unknown) from the "template" column.
+    //   3. Allows the creation if EITHER the email matches the allow-list in the Environment
+    //      Variable "ptricks_AgentCreationAllowedEmailContains", OR the harness is listed in
+    //      "ptricks_AgentCreationAllowedHarnesses". Otherwise it blocks, and labels the block:
+    //        - FullBlock:    no harness at all is allowed in this environment;
+    //        - PartialBlock: another harness is allowed, so the user can be pointed to it.
+    //   4. POSTs an audit payload to a Power Automate Flow (URL from the Environment Variable
     //      "ptricks_AgentCreationLoggingFlowUrl") regardless of the block decision. The HTTP
     //      call never prevents the block from being enforced.
     public class LogAgentCreationAttemptPlugin : IPlugin
@@ -35,6 +37,45 @@ namespace LogAgentCreationAttempt
             public int? AccessMode { get; set; }
             // Entra ID (Azure AD) object identifier (GUID as string).
             public string EntraObjectId { get; set; }
+        }
+
+        // A harness the plug-in knows about: the stable key used in configuration and in the
+        // notification card settings, plus the name shown to makers.
+        private sealed class HarnessDefinition
+        {
+            public HarnessDefinition(string key, string displayName)
+            {
+                Key = key;
+                DisplayName = displayName;
+            }
+
+            public string Key { get; private set; }
+            public string DisplayName { get; private set; }
+        }
+
+        // Maps a "template" column prefix to a harness key.
+        private sealed class TemplatePrefixRule
+        {
+            public TemplatePrefixRule(string prefix, string harnessKey)
+            {
+                Prefix = prefix;
+                HarnessKey = harnessKey;
+            }
+
+            public string Prefix { get; private set; }
+            public string HarnessKey { get; private set; }
+        }
+
+        // Optional JSON shape of the BlockMessage Environment Variable: one message per block
+        // scope. A plain-text value is also accepted and used for both scopes.
+        [DataContract]
+        private sealed class ScopedBlockMessages
+        {
+            [DataMember(Name = "FullBlock")]
+            public string FullBlock { get; set; }
+
+            [DataMember(Name = "PartialBlock")]
+            public string PartialBlock { get; set; }
         }
 
         // JSON contract POSTed to the logging Flow — the Flow parses this and writes it to the
@@ -104,11 +145,29 @@ namespace LogAgentCreationAttempt
             [DataMember(Name = "blockReason")]
             public string BlockReason { get; set; }
 
-            // Resolved value of the "ptricks_AgentCreationBlockGitHubCopilotHarnessOnly" Yes/No
-            // Environment Variable at the time of this attempt. TRUE means a would-be block was
-            // narrowed to GitHub Copilot (GHC) harness creates only.
-            [DataMember(Name = "ghcHarnessOnlyMode")]
-            public bool GhcHarnessOnlyMode { get; set; }
+            // --- Harness ---
+
+            // Raw "template" column value as received (null when not supplied).
+            [DataMember(Name = "agentTemplate")]
+            public string AgentTemplate { get; set; }
+
+            // Harness key, e.g. "GitHubCopilot".
+            [DataMember(Name = "harness")]
+            public string Harness { get; set; }
+
+            // Harness display name, e.g. "GitHub Copilot".
+            [DataMember(Name = "harnessDisplayName")]
+            public string HarnessDisplayName { get; set; }
+
+            // "FullBlock", "PartialBlock" or "None" (not blocked).
+            [DataMember(Name = "blockScope")]
+            public string BlockScope { get; set; }
+
+            // Display names of the harnesses allowed in this environment at the time of the
+            // attempt, joined in natural language (e.g. "Standard or Copilot Chat"). Empty when
+            // none is allowed.
+            [DataMember(Name = "allowedHarnesses")]
+            public string AllowedHarnesses { get; set; }
         }
 
         // Dataverse logical name for a Copilot Studio agent.
@@ -119,21 +178,63 @@ namespace LogAgentCreationAttempt
         private const string BlockMessage = "Agent creation is not allowed in this environment and has been blocked by a Dataverse plugin. Please contact your administrator for more information.";
 
         // Environment Variable schema names. The values they resolve to are admin-editable
-        // without redeploying this assembly.
+        // without redeploying this assembly. All share the prefix below, so they are read in a
+        // single query.
+        private const string EnvironmentVariablePrefix = "ptricks_AgentCreation";
         private const string FlowUrlEnvironmentVariableSchemaName = "ptricks_AgentCreationLoggingFlowUrl";
         private const string AllowedEmailContainsEnvironmentVariableSchemaName = "ptricks_AgentCreationAllowedEmailContains";
         private const string BlockMessageEnvironmentVariableSchemaName = "ptricks_AgentCreationBlockMessage";
 
-        // Yes/No Environment Variable. When TRUE, a would-be block is only enforced for agents
-        // created by the GitHub Copilot (GHC) harness — identified by a "template" column value
-        // that starts with "cli". When FALSE, blank or unset, the block applies regardless of
-        // template. Dataverse serialises a Yes/No variable's value as the string "true" / "false".
-        private const string GhcHarnessOnlyEnvironmentVariableSchemaName = "ptricks_AgentCreationBlockGitHubCopilotHarnessOnly";
+        // Comma-separated list of harness keys anyone may create (e.g. "Standard,CopilotChat").
+        // Blank or unreadable means no harness is allowed (fail-closed full-block mode).
+        private const string AllowedHarnessesEnvironmentVariableSchemaName = "ptricks_AgentCreationAllowedHarnesses";
 
-        // The "bot" column inspected in GHC-harness-only mode; a value starting with this prefix
-        // marks an agent created by the GitHub Copilot (GHC) harness.
+        // The "bot" column the harness is resolved from.
         private const string BotTemplateColumnName = "template";
-        private const string GhcHarnessTemplatePrefix = "cli";
+
+        // Harness keys. These exact strings are used in the AllowedHarnesses Environment Variable
+        // and as keys in the notification card settings, so they must stay stable.
+        private const string HarnessStandard = "Standard";
+        private const string HarnessCopilotChat = "CopilotChat";
+        private const string HarnessGitHubCopilot = "GitHubCopilot";
+        private const string HarnessCustomerConversation = "CustomerConversation";
+        private const string HarnessUnknown = "Unknown";
+
+        // Block scope values, sent to the Flow and used to choose the message.
+        private const string BlockScopeFull = "FullBlock";
+        private const string BlockScopePartial = "PartialBlock";
+        private const string BlockScopeNone = "None";
+
+        // Tokens replaced in the block message.
+        private const string HarnessNameToken = "{HarnessName}";
+        private const string AllowedHarnessesToken = "{AllowedHarnesses}";
+
+        // Known harnesses, in display order (used for parsing the allowed list and for listing
+        // alternatives in messages).
+        private static readonly HarnessDefinition[] Harnesses =
+        {
+            new HarnessDefinition(HarnessStandard, "Standard"),
+            new HarnessDefinition(HarnessCopilotChat, "Copilot Chat"),
+            new HarnessDefinition(HarnessGitHubCopilot, "GitHub Copilot"),
+            new HarnessDefinition(HarnessCustomerConversation, "Customer Conversation"),
+            new HarnessDefinition(HarnessUnknown, "Unknown")
+        };
+
+        // Template prefix rules, checked in order; first match wins (case-insensitive). These
+        // mirror the harness classification used in reporting. A null/absent template is
+        // Standard; anything unmatched (including an empty value) is Unknown.
+        private static readonly TemplatePrefixRule[] TemplatePrefixRules =
+        {
+            new TemplatePrefixRule("default", HarnessStandard),
+            new TemplatePrefixRule("powerpages-1", HarnessStandard),
+            new TemplatePrefixRule("citizen", HarnessStandard),
+            new TemplatePrefixRule("system", HarnessStandard),
+            new TemplatePrefixRule("o365LicenseRestrictedAgent", HarnessStandard),
+            new TemplatePrefixRule("ivr-", HarnessStandard),
+            new TemplatePrefixRule("gpt", HarnessCopilotChat),
+            new TemplatePrefixRule("cli", HarnessGitHubCopilot),
+            new TemplatePrefixRule("conversationalai", HarnessCustomerConversation)
+        };
 
         // Deadline for the Flow HTTP call so a slow endpoint cannot stall the Dataverse pipeline.
         private const int FlowTimeoutMs = 4000;
@@ -191,61 +292,53 @@ namespace LogAgentCreationAttempt
             // InitiatingUserId is the original human even under impersonation.
             var initiatingUser = GetInitiatingUserDetails(systemService, context, tracingService);
 
+            // All of this plug-in's Environment Variables, read in one query.
+            var environmentVariables = GetEnvironmentVariableValues(systemService, tracingService);
+
             // Comma-separated allow-list, e.g. "@contoso.com,@fabrikam.com". Allowed if the email
             // contains ANY allow-list substring. An empty or unreadable allow-list means nobody
-            // is permitted (fail-closed full-block mode).
-            var allowedEmailContainsValues = ParseContainsAllowList(
-                GetEnvironmentVariableValue(systemService, AllowedEmailContainsEnvironmentVariableSchemaName, tracingService));
-
+            // is permitted by email.
+            var allowedEmailContainsValues = ParseCommaSeparatedValues(
+                GetValue(environmentVariables, AllowedEmailContainsEnvironmentVariableSchemaName));
             var isAllowedByEmailContains = EmailMatchesContainsAllowList(initiatingUser?.InternalEmailAddress, allowedEmailContainsValues);
-            var shouldBlock = !isAllowedByEmailContains;
-            var blockReason = shouldBlock
-                ? "Initiating user email did not match any configured allow-list contains values."
-                : "Initiating user email matched a configured allow-list contains value.";
+
+            // Harness of the agent being created, and the harnesses allowed in this environment.
+            string agentTemplate;
+            var harness = ResolveHarness(target, out agentTemplate);
+            var allowedHarnesses = ParseAllowedHarnesses(
+                GetValue(environmentVariables, AllowedHarnessesEnvironmentVariableSchemaName),
+                tracingService);
+            var isAllowedByHarness = allowedHarnesses.Contains(harness.Key);
+
+            // Alternatives the user can be pointed to. "Unknown" is never offered as one.
+            var alternatives = Harnesses
+                .Where(h => h.Key != HarnessUnknown && allowedHarnesses.Contains(h.Key))
+                .ToList();
+            var allowedHarnessesDisplay = JoinNatural(alternatives.Select(h => h.DisplayName).ToList());
+
+            var shouldBlock = !isAllowedByEmailContains && !isAllowedByHarness;
+            var blockScope = !shouldBlock
+                ? BlockScopeNone
+                : (alternatives.Count == 0 ? BlockScopeFull : BlockScopePartial);
+
+            var blockReason = BuildBlockReason(
+                isAllowedByEmailContains,
+                harness,
+                agentTemplate,
+                allowedHarnesses,
+                blockScope);
 
             tracingService?.Trace(
-                "LogAgentCreationAttemptPlugin: Initiating user evaluated. Email={0}, AllowListCount={1}, IsAllowedByContains={2}, ShouldBlock={3}",
+                "LogAgentCreationAttemptPlugin: Attempt evaluated. Email={0}, AllowListCount={1}, IsAllowedByContains={2}, Template={3}, Harness={4}, AllowedHarnesses={5}, IsAllowedByHarness={6}, ShouldBlock={7}, BlockScope={8}",
                 initiatingUser?.InternalEmailAddress,
                 allowedEmailContainsValues.Count,
                 isAllowedByEmailContains,
-                shouldBlock);
-
-            // Resolved once here so it can both drive the block-narrowing below and be recorded in
-            // the audit payload regardless of the block decision.
-            var ghcHarnessOnlyMode = IsGhcHarnessOnlyModeEnabled(systemService, tracingService);
-
-            // GHC-harness-only mode: when the Yes/No variable is TRUE, narrow the block so it only
-            // catches agents created by the GitHub Copilot (GHC) harness (template starts with
-            // "cli"). Any other agent — including one whose template is missing or unreadable — is
-            // left to the email allow-list alone, so a genuine GHC-harness create can never slip
-            // through by omitting the column (fail-closed). When the variable is FALSE/blank/unset,
-            // the block is unchanged.
-            if (shouldBlock && ghcHarnessOnlyMode)
-            {
-                var template = target.Contains(BotTemplateColumnName)
-                    ? target.GetAttributeValue<string>(BotTemplateColumnName)
-                    : null;
-                var isGhcHarnessCreate = !string.IsNullOrWhiteSpace(template)
-                    && template.Trim().StartsWith(GhcHarnessTemplatePrefix, StringComparison.OrdinalIgnoreCase);
-
-                if (isGhcHarnessCreate)
-                {
-                    blockReason = "GHC-harness-only mode is on and bot.template starts with \"" + GhcHarnessTemplatePrefix + "\" — enforcing the block.";
-                }
-                else
-                {
-                    shouldBlock = false;
-                    blockReason = string.IsNullOrWhiteSpace(template)
-                        ? "GHC-harness-only mode is on and bot.template is missing/unreadable — not blocking (block is scoped to GHC-harness creates only)."
-                        : "GHC-harness-only mode is on and bot.template does not start with \"" + GhcHarnessTemplatePrefix + "\" — not blocking.";
-                }
-
-                tracingService?.Trace(
-                    "LogAgentCreationAttemptPlugin: GHC-harness-only mode active. Template={0}, IsGhcHarnessCreate={1}, ShouldBlock={2}",
-                    template,
-                    isGhcHarnessCreate,
-                    shouldBlock);
-            }
+                agentTemplate ?? "(null)",
+                harness.Key,
+                string.Join(",", allowedHarnesses),
+                isAllowedByHarness,
+                shouldBlock,
+                blockScope);
 
             // May be blank at PreValidation before Dataverse fills default fields.
             var displayName = ResolveDisplayName(target) ?? "(display name not provided)";
@@ -254,52 +347,230 @@ namespace LogAgentCreationAttempt
             // logging, but this outbound HTTP call survives it. A failed Flow call is non-fatal —
             // the block decision is independent of logging.
             TrySendToFlow(
-                systemService,
+                GetValue(environmentVariables, FlowUrlEnvironmentVariableSchemaName),
                 tracingService,
                 context,
-                displayName,
-                requestFingerprint,
-                initiatingUser,
-                shouldBlock,
-                blockReason,
-                ghcHarnessOnlyMode,
-                attemptedOnUtc);
+                new FlowLogPayload
+                {
+                    AttemptedOnUtc = attemptedOnUtc.ToString("o"),   // ISO-8601 round-trip
+                    AgentDisplayName = displayName,
+                    RequestFingerprint = requestFingerprint,
+                    InitiatingUserInternalEmailAddress = initiatingUser?.InternalEmailAddress,
+                    InitiatingUserFullName = initiatingUser?.FullName,
+                    InitiatingUserDomainName = initiatingUser?.DomainName,
+                    InitiatingUserAccessMode = initiatingUser?.AccessMode,
+                    InitiatingUserEntraObjectId = initiatingUser?.EntraObjectId,
+                    ShouldBlock = shouldBlock,
+                    BlockReason = blockReason,
+                    AgentTemplate = agentTemplate,
+                    Harness = harness.Key,
+                    HarnessDisplayName = harness.DisplayName,
+                    BlockScope = blockScope,
+                    AllowedHarnesses = allowedHarnessesDisplay
+                });
 
             if (shouldBlock)
             {
                 // Admin-customizable message via Environment Variable; falls back to the hardcoded
                 // default when unset or unreadable (fail-safe — a block always has a message).
-                var blockMessage = GetEnvironmentVariableValue(systemService, BlockMessageEnvironmentVariableSchemaName, tracingService);
-                if (string.IsNullOrWhiteSpace(blockMessage))
-                {
-                    blockMessage = BlockMessage;
-                }
+                var blockMessage = ResolveBlockMessage(
+                    GetValue(environmentVariables, BlockMessageEnvironmentVariableSchemaName),
+                    blockScope,
+                    harness.DisplayName,
+                    allowedHarnessesDisplay,
+                    tracingService);
 
-                tracingService?.Trace("LogAgentCreationAttemptPlugin: Throwing block exception.");
+                tracingService?.Trace("LogAgentCreationAttemptPlugin: Throwing block exception. BlockScope={0}", blockScope);
 
                 // Cancels the Dataverse transaction and surfaces the friendly message. The audit
                 // call above already fired, so the log entry exists regardless.
                 throw new InvalidPluginExecutionException(blockMessage);
             }
 
-            tracingService?.Trace("LogAgentCreationAttemptPlugin: Completed — initiating user is on the allow-list, not blocking.");
+            tracingService?.Trace(
+                "LogAgentCreationAttemptPlugin: Completed — not blocking (allowed by email: {0}, allowed by harness: {1}).",
+                isAllowedByEmailContains,
+                isAllowedByHarness);
         }
 
-        // Builds the JSON payload and POSTs it to the Flow. Never throws — it runs before the
-        // optional block exception, so all failures (including timeouts) are caught and traced.
+        // Resolves the harness from the Target's "template" column. A null or absent template is
+        // Standard; otherwise the trimmed value is matched against the prefix rules; anything
+        // unmatched (including an empty value) is Unknown. The raw template is returned for
+        // auditing.
+        private static HarnessDefinition ResolveHarness(Entity target, out string rawTemplate)
+        {
+            rawTemplate = target.Contains(BotTemplateColumnName)
+                ? target.GetAttributeValue<string>(BotTemplateColumnName)
+                : null;
+
+            if (rawTemplate == null)
+            {
+                return GetHarness(HarnessStandard);
+            }
+
+            var template = rawTemplate.Trim();
+            foreach (var rule in TemplatePrefixRules)
+            {
+                if (template.StartsWith(rule.Prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return GetHarness(rule.HarnessKey);
+                }
+            }
+
+            return GetHarness(HarnessUnknown);
+        }
+
+        private static HarnessDefinition GetHarness(string key)
+        {
+            return Harnesses.First(h => h.Key == key);
+        }
+
+        // Parses the AllowedHarnesses value into a set of canonical harness keys. Entries are
+        // matched case-insensitively and ignoring spaces, so "Copilot Chat" and "copilotchat"
+        // both match "CopilotChat". Unrecognised entries are ignored and traced. Blank or
+        // unreadable means an empty set (no harness allowed).
+        private static HashSet<string> ParseAllowedHarnesses(string raw, ITracingService tracingService)
+        {
+            var result = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var entry in ParseCommaSeparatedValues(raw))
+            {
+                var normalized = entry.Replace(" ", string.Empty);
+                var match = Harnesses.FirstOrDefault(h => string.Equals(h.Key, normalized, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    result.Add(match.Key);
+                }
+                else
+                {
+                    tracingService?.Trace(
+                        "LogAgentCreationAttemptPlugin: Ignoring unrecognised entry \"{0}\" in {1}.",
+                        entry,
+                        AllowedHarnessesEnvironmentVariableSchemaName);
+                }
+            }
+
+            return result;
+        }
+
+        // Joins names in natural language: "A", "A or B", "A, B or C". Empty for no names.
+        private static string JoinNatural(IList<string> names)
+        {
+            if (names == null || names.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            if (names.Count == 1)
+            {
+                return names[0];
+            }
+
+            return string.Join(", ", names.Take(names.Count - 1)) + " or " + names[names.Count - 1];
+        }
+
+        // Plain-language explanation of the decision, written to the audit record.
+        private static string BuildBlockReason(
+            bool isAllowedByEmailContains,
+            HarnessDefinition harness,
+            string agentTemplate,
+            ICollection<string> allowedHarnesses,
+            string blockScope)
+        {
+            var templateText = agentTemplate == null ? "no template" : "template '" + agentTemplate + "'";
+            var allowedText = allowedHarnesses.Count == 0 ? "none" : string.Join(", ", allowedHarnesses);
+
+            if (isAllowedByEmailContains)
+            {
+                return "Initiating user email matched a configured allow-list value; harness "
+                    + harness.Key + " (" + templateText + ") not checked. Not blocked.";
+            }
+
+            if (blockScope == BlockScopeNone)
+            {
+                return "Initiating user email did not match the allow-list, but harness "
+                    + harness.Key + " (" + templateText + ") is in the allowed harnesses ("
+                    + allowedText + "). Not blocked.";
+            }
+
+            return "Initiating user email did not match the allow-list and harness "
+                + harness.Key + " (" + templateText + ") is not in the allowed harnesses ("
+                + allowedText + "). " + blockScope + ".";
+        }
+
+        // Chooses the in-product block message. The Environment Variable may hold plain text
+        // (used for every scope) or JSON with FullBlock / PartialBlock keys. A missing or blank
+        // key falls back to FullBlock, then to the hardcoded default. The {HarnessName} and
+        // {AllowedHarnesses} tokens are replaced in the chosen text.
+        private static string ResolveBlockMessage(
+            string raw,
+            string blockScope,
+            string harnessDisplayName,
+            string allowedHarnessesDisplay,
+            ITracingService tracingService)
+        {
+            string message = null;
+
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                var trimmed = raw.Trim();
+                var scoped = trimmed.StartsWith("{", StringComparison.Ordinal)
+                    ? TryDeserializeScopedBlockMessages(trimmed, tracingService)
+                    : null;
+
+                if (scoped != null)
+                {
+                    message = blockScope == BlockScopePartial && !string.IsNullOrWhiteSpace(scoped.PartialBlock)
+                        ? scoped.PartialBlock
+                        : scoped.FullBlock;
+                }
+                else
+                {
+                    message = trimmed;
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                message = BlockMessage;
+            }
+
+            return message
+                .Replace(HarnessNameToken, harnessDisplayName ?? string.Empty)
+                .Replace(AllowedHarnessesToken, allowedHarnessesDisplay ?? string.Empty);
+        }
+
+        // Returns null when the value is not valid JSON of the expected shape, so the caller
+        // treats it as plain text instead.
+        private static ScopedBlockMessages TryDeserializeScopedBlockMessages(string json, ITracingService tracingService)
+        {
+            try
+            {
+                var serializer = new DataContractJsonSerializer(typeof(ScopedBlockMessages));
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+                {
+                    return serializer.ReadObject(stream) as ScopedBlockMessages;
+                }
+            }
+            catch (Exception ex)
+            {
+                tracingService?.Trace(
+                    "LogAgentCreationAttemptPlugin: {0} looks like JSON but could not be parsed; using it as plain text. Error={1}",
+                    BlockMessageEnvironmentVariableSchemaName,
+                    ex.Message);
+                return null;
+            }
+        }
+
+        // Completes the payload with the pipeline context fields and POSTs it to the Flow. Never
+        // throws — it runs before the optional block exception, so all failures (including
+        // timeouts) are caught and traced.
         private static void TrySendToFlow(
-            IOrganizationService systemService,
+            string flowUrl,
             ITracingService tracingService,
             IPluginExecutionContext context,
-            string displayName,
-            string requestFingerprint,
-            InitiatingUserDetails initiatingUser,
-            bool shouldBlock,
-            string blockReason,
-            bool ghcHarnessOnlyMode,
-            DateTime attemptedOnUtc)
+            FlowLogPayload payload)
         {
-            var flowUrl = GetEnvironmentVariableValue(systemService, FlowUrlEnvironmentVariableSchemaName, tracingService);
             if (string.IsNullOrWhiteSpace(flowUrl))
             {
                 tracingService?.Trace(
@@ -310,29 +581,15 @@ namespace LogAgentCreationAttempt
 
             try
             {
-                var payload = new FlowLogPayload
-                {
-                    AttemptedOnUtc = attemptedOnUtc.ToString("o"),   // ISO-8601 round-trip
-                    AgentDisplayName = displayName,
-                    RequestFingerprint = requestFingerprint,
-                    MessageName = context.MessageName,
-                    PrimaryEntity = context.PrimaryEntityName,
-                    Stage = context.Stage,
-                    IsInTransaction = context.IsInTransaction,
-                    CorrelationId = context.CorrelationId.ToString(),
-                    RequestId = context.RequestId.HasValue ? context.RequestId.Value.ToString() : Guid.Empty.ToString(),
-                    OrganizationId = context.OrganizationId.ToString(),
-                    InitiatingUserId = context.InitiatingUserId.ToString(),
-                    InitiatingUserInternalEmailAddress = initiatingUser?.InternalEmailAddress,
-                    InitiatingUserFullName = initiatingUser?.FullName,
-                    InitiatingUserDomainName = initiatingUser?.DomainName,
-                    InitiatingUserAccessMode = initiatingUser?.AccessMode,
-                    InitiatingUserEntraObjectId = initiatingUser?.EntraObjectId,
-                    UserId = context.UserId.ToString(),
-                    ShouldBlock = shouldBlock,
-                    BlockReason = blockReason,
-                    GhcHarnessOnlyMode = ghcHarnessOnlyMode
-                };
+                payload.MessageName = context.MessageName;
+                payload.PrimaryEntity = context.PrimaryEntityName;
+                payload.Stage = context.Stage;
+                payload.IsInTransaction = context.IsInTransaction;
+                payload.CorrelationId = context.CorrelationId.ToString();
+                payload.RequestId = context.RequestId.HasValue ? context.RequestId.Value.ToString() : Guid.Empty.ToString();
+                payload.OrganizationId = context.OrganizationId.ToString();
+                payload.InitiatingUserId = context.InitiatingUserId.ToString();
+                payload.UserId = context.UserId.ToString();
 
                 var body = SerializePayload(payload);
 
@@ -395,27 +652,29 @@ namespace LogAgentCreationAttempt
             }
         }
 
-        // Reads a Dataverse Environment Variable value by schema name. The environment-specific
-        // override (environmentvariablevalue) takes precedence over the definition's default
-        // (environmentvariabledefinition), matching how Dataverse resolves them at runtime.
-        // Returns null when no matching definition exists or on any failure (fail-closed).
-        private static string GetEnvironmentVariableValue(IOrganizationService service, string schemaName, ITracingService tracingService)
+        // Reads every Environment Variable whose schema name starts with the plug-in's prefix, in
+        // a single query. The environment-specific override (environmentvariablevalue) takes
+        // precedence over the definition's default (environmentvariabledefinition), matching how
+        // Dataverse resolves them at runtime. Returns an empty dictionary on any failure, so every
+        // lookup resolves to null (fail-closed).
+        private static Dictionary<string, string> GetEnvironmentVariableValues(IOrganizationService service, ITracingService tracingService)
         {
+            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
             if (service == null)
             {
-                tracingService?.Trace("LogAgentCreationAttemptPlugin: systemService unavailable for environment variable lookup of {0}.", schemaName);
-                return null;
+                tracingService?.Trace("LogAgentCreationAttemptPlugin: systemService unavailable for environment variable lookup.");
+                return values;
             }
 
             try
             {
                 var query = new QueryExpression("environmentvariabledefinition")
                 {
-                    ColumnSet = new ColumnSet("defaultvalue"),
-                    TopCount = 1    // Schema names are unique.
+                    ColumnSet = new ColumnSet("schemaname", "defaultvalue")
                 };
 
-                query.Criteria.AddCondition("schemaname", ConditionOperator.Equal, schemaName);
+                query.Criteria.AddCondition("schemaname", ConditionOperator.BeginsWith, EnvironmentVariablePrefix);
 
                 // Left outer join so the definition row returns even when no override exists.
                 var valueLink = query.AddLink(
@@ -428,47 +687,45 @@ namespace LogAgentCreationAttempt
 
                 var result = service.RetrieveMultiple(query);
 
-                string value = null;
-                if (result?.Entities != null && result.Entities.Count > 0)
+                foreach (var definition in result?.Entities ?? Enumerable.Empty<Entity>())
                 {
-                    var definition = result.Entities[0];
-                    value = GetAliasedString(definition, "evv.value");
+                    var schemaName = definition.GetAttributeValue<string>("schemaname");
+                    if (string.IsNullOrWhiteSpace(schemaName))
+                    {
+                        continue;
+                    }
+
+                    var value = GetAliasedString(definition, "evv.value");
                     if (string.IsNullOrWhiteSpace(value))
                     {
                         value = definition.GetAttributeValue<string>("defaultvalue");
                     }
+
+                    // A definition can come back on more than one row; keep the first non-blank value.
+                    string existing;
+                    if (!values.TryGetValue(schemaName, out existing) || string.IsNullOrWhiteSpace(existing))
+                    {
+                        values[schemaName] = value;
+                    }
                 }
 
                 tracingService?.Trace(
-                    "LogAgentCreationAttemptPlugin: Environment variable lookup for {0}. ValueFound={1}",
-                    schemaName,
-                    !string.IsNullOrWhiteSpace(value));
-
-                return value;
+                    "LogAgentCreationAttemptPlugin: Environment variables found: {0}",
+                    string.Join(", ", values.Select(v => v.Key + (string.IsNullOrWhiteSpace(v.Value) ? " (blank)" : string.Empty))));
             }
             catch (Exception ex)
             {
-                tracingService?.Trace("LogAgentCreationAttemptPlugin: Environment variable lookup for {0} failed. Error={1}", schemaName, ex);
-                return null;
+                tracingService?.Trace("LogAgentCreationAttemptPlugin: Environment variable lookup failed. Error={0}", ex);
+                values.Clear();
             }
+
+            return values;
         }
 
-        // True only when the GHC-harness-only Yes/No Environment Variable resolves to an affirmative
-        // value. Dataverse serialises a Yes/No variable as the string "true" / "false"; "1" and
-        // "yes" are also accepted defensively. Anything else — including null, blank, "false" or an
-        // unreadable variable — is false, so the block stays broad unless deliberately narrowed.
-        private static bool IsGhcHarnessOnlyModeEnabled(IOrganizationService systemService, ITracingService tracingService)
+        private static string GetValue(IDictionary<string, string> values, string schemaName)
         {
-            var raw = GetEnvironmentVariableValue(systemService, GhcHarnessOnlyEnvironmentVariableSchemaName, tracingService);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return false;
-            }
-
-            var normalized = raw.Trim().Trim('"', '\'');
-            return normalized.Equals("true", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("1", StringComparison.OrdinalIgnoreCase)
-                || normalized.Equals("yes", StringComparison.OrdinalIgnoreCase);
+            string value;
+            return values.TryGetValue(schemaName, out value) ? value : null;
         }
 
         // Safely extracts a string from an AliasedValue (present when a joined entity's column
@@ -527,9 +784,9 @@ namespace LogAgentCreationAttempt
             }
         }
 
-        // Parses the comma-separated allow-list into trimmed, non-empty substrings. Strips outer
-        // and per-token quotes an admin may have pasted in.
-        private static List<string> ParseContainsAllowList(string raw)
+        // Parses a comma-separated value into trimmed, non-empty entries. Strips outer and
+        // per-entry quotes an admin may have pasted in.
+        private static List<string> ParseCommaSeparatedValues(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw))
             {
@@ -551,7 +808,7 @@ namespace LogAgentCreationAttempt
         }
 
         // True if the email contains at least one allow-list substring (case-insensitive). An
-        // empty allow-list always returns false (intentional full-block mode).
+        // empty allow-list always returns false.
         private static bool EmailMatchesContainsAllowList(string email, IList<string> allowList)
         {
             return !string.IsNullOrWhiteSpace(email)
